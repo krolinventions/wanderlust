@@ -64,7 +64,7 @@ When the packet reaches the node that sent the original request that node adopts
 Location energy is determined by the log sum of the path distances [2]. A lower energy is better. Note: Freenet currently uses a circle.
 
 ## Protocol
-This section describes the layout of the different packets.
+This section describes the layout of the different packets. Cryptography is done using [Elliptic Curve Cryptography][ecc] (ECC) with 256 bit keys. The choice for ECC is mainly due to the smaller key sizes, leading to less overhead. The suspicion that RSA may soon be severely weakened or broken also plays a role.
 
 IPv6/IPv4 header (40 bytes)
 UDP header (8 bytes)
@@ -204,3 +204,4 @@ Interesting statistics:
 [kademlia]: http://en.wikipedia.org/wiki/Kademlia "Kademlia"
 [cjdns]: http://cjdns.info/ "CJDNS"
 [gnunet]: https://gnunet.org/ "GNUNet"
+[ecc]: http://en.wikipedia.org/wiki/Elliptic_curve_cryptography "Elliptic Curve Cryptography"
