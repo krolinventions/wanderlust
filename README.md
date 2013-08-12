@@ -11,7 +11,7 @@ This project aims for the following:
 - A global network of nodes that can communicate without fear of censorship or privacy violations.
 
 ## Status
-The algorithm is done and protocol design is taking shape. No code has yet been written.
+The algorithm is done and protocol design is taking shape. No code has yet been written. It is possible that Wanderlust could be most easily implemented as a component of Cjdns or as a fork.
 
 1. Routing algorithm design - completed
 2. Protocol design - in progress
