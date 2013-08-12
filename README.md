@@ -4,7 +4,7 @@ Wanderlust - A Worldwide Network with Distributed Routing through Location Swapp
 The centralized nature of the current Internet allows for easy censoring and invasion of privacy. Current technical solutions are not sufficient. Wanderlust is a decentralized overlay/mesh network compatible with existing IPv6 aware applications that aims to fix this. Nodes have an IPv6 addresses which is created from their public key. A node connects to a number of peers over the normal Internet or through private links. The connections between nodes are assumed to form a small world network and location swapping is used to assign every node a location that is close to its directly connected peers. Using the location gradient packets can then be routed to nodes. A DHT provides a global location lookup for any address. Encryption is used throughout the network to provide privacy and prevent attacks on the network.
 
 ## Goals
-This project for the following:
+This project aims for the following:
 - A routing algorithm that allows for efficient decentralized routing.
 - A protocol that allows for the communication needed for the implementation of the algorithm and for the transfer of the information itself, safely and securely.
 - The design and implementation of an application that implements the routing algorithm and the protocol.
