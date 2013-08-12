@@ -10,7 +10,7 @@ An evil node generates a random location. When someone asks if he'd be happy to 
 Mitigation: Only accept a swap if it will improve your own location. Convergence will be slower but nobody can force us to get a random location.
 
 ## One location to rule them all (Pitch black)
-A evil node picks a fixed location (for example location 1). He then tries to swap, and if this succeedes he again reverts his own location to location 1. This way after a while the entire network will have the same location and routing will not work.
+A evil node picks a fixed location (for example location 1). He then tries to swap, and if this succeeds he again reverts his own location to location 1. This way after a while the entire network will have the same location and routing will not work.
 
 Mitigation: We need reject a swap if we detect another node is already using that location. Really close locations are not a problem as long as they are different.
 
@@ -23,6 +23,11 @@ Mitigation: See location island
 A group of evil nodes all pick a location in a certain range around their target. They also keep reverting to an address in this range after a swap. This will cause the location gradient to move towards the group of evil nodes, disrupting routing until the target swaps his address with some node close to the evil group. Of course the evil group can then use the new location of their target. This attack is related to the Pitch Black attack.
 
 Mitigation: We snoop on location swaps, and if a node somehow seems to move away from its optimal location (whether the optimal location changes or the location of the node) we blacklist it.
+
+## Sybil island
+A single attacker pretends to be a large bunch of nodes. He makes all those nodes pick a location close to the target and lets normal network optimization play out. This will cause routing for the target to shift towards to attacker. As he does not need to revert any locations monitoring swap request will not help.
+
+Mitigation: We monitor the location distribution of never seen before nodes on a link after an initial warmup period. If this location distribution is skewed too much we cut the link.
 
 ## Evil core router
 A centrally connected node that passes a lot of traffic can decide to drop traffic from a certain target.
