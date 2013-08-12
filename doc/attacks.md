@@ -20,7 +20,7 @@ An evil node picks the same location as another node, to disrupt routing and con
 Mitigation: See location island
 
 ## Location island
-A group of evil nodes all pick a location in a certain range around their target. They also keep reverting to an address in this range after a swap. This will cause the location gradient to move towards the group of evil nodes, disrupting routing until the target swaps his address with some node close to the evil group. Of course the evil group can then use the new location of their target.
+A group of evil nodes all pick a location in a certain range around their target. They also keep reverting to an address in this range after a swap. This will cause the location gradient to move towards the group of evil nodes, disrupting routing until the target swaps his address with some node close to the evil group. Of course the evil group can then use the new location of their target. This attack is related to the Pitch Black attack.
 
 Mitigation: We snoop on location swaps, and if a node somehow seems to move away from its optimal location (whether the optimal location changes or the location of the node) we blacklist it.
 
