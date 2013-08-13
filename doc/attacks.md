@@ -1,4 +1,6 @@
 # Attacks
+If someone would want to disrupt the network there are a number of different attacks he might attempt. Some of these things might even happen naturally during operation of the network. A good paper on the weaknesses of location based routing are described in the paper [Routing in the Dark: Pitch Black][pitchblack] by Evans et al.
+
 ## Route table poisoning
 Attacker performs a normal request to target and obtains a packet destined for evil node 1. He then sends this packet out of band (or encapsulated) to evil node 2. Evil node 2 starts sending his packet. All nodes on the route between evil node 2 and evil node 1 will now have the wrong route to the target. Evil node 2 can then drop all packets and prevent target from sending any.
 
@@ -9,7 +11,7 @@ An evil node generates a random location. When someone asks if he'd be happy to 
 
 Mitigation: Only accept a swap if it will improve your own location. Convergence will be slower but nobody can force us to get a random location.
 
-## One location to rule them all (Pitch black)
+## One location to rule them all
 A evil node picks a fixed location (for example location 1). He then tries to swap, and if this succeeds he again reverts his own location to location 1. This way after a while the entire network will have the same location and routing will not work.
 
 Mitigation: We need reject a swap if we detect another node is already using that location. Really close locations are not a problem as long as they are different.
@@ -17,10 +19,10 @@ Mitigation: We need reject a swap if we detect another node is already using tha
 ## That's my location!
 An evil node picks the same location as another node, to disrupt routing and convergence.
 
-Mitigation: See location island
+Mitigation: See location island, Single act node
 
 ## Location island
-A group of evil nodes all pick a location in a certain range around their target. They also keep reverting to an address in this range after a swap. This will cause the location gradient to move towards the group of evil nodes, disrupting routing until the target swaps his address with some node close to the evil group. Of course the evil group can then use the new location of their target. This attack is related to the Pitch Black attack.
+A group of evil nodes all pick a location in a certain range around their target. They also keep reverting to an address in this range after a swap. This will cause the location gradient to move towards the group of evil nodes, disrupting routing until the target swaps his address with some node close to the evil group. Of course the evil group can then use the new location of their target. This attack is related to "That's my location".
 
 Mitigation: We snoop on location swaps, and if a node somehow seems to move away from its optimal location (whether the optimal location changes or the location of the node) we blacklist it.
 
@@ -29,10 +31,15 @@ A single attacker pretends to be a large bunch of nodes. He makes all those node
 
 Mitigation: We monitor the location distribution of never seen before nodes on a link after an initial warmup period. If this location distribution is skewed too much we cut the link.
 
-## Evil core router
-A centrally connected node that passes a lot of traffic can decide to drop traffic from a certain target.
+## Single act node
+If a node joins the network for the first time, swaps his location with another node that wants it and then leaves he will have reduced the entropy in the available addresses. The node he swapped with agreed to the swap because he got a location closer to his neighbors. The node that leaves takes the address that balances the swap with it.
 
-Mitigation: This will be discovered quickly and the evil node can be disconnected on the link level
+Mitigation: We need to make sure we keep enough entropy in the network. This can be done by periodically and randomly modifying a nodes location a little bit. The small change will not significantly impact routing but the added entropy will hopefully keep the network healthy.
+
+## Evil core router
+A centrally connected node that passes a lot of traffic can decide to drop traffic from or to a certain target. This does not have to be all traffic, a packet loss of 10% would already be very annoying.
+
+Mitigation: This is actually quite hard to determine, as the attacker can invent any number of surrounding nodes (sybil) and let those take the blame. We also don't want an attacker to be able to determine the network topology. FIXME
 
 ## General Defense
 For attacks that destabilize the network we should always be able to pinpoint the link the attacks come from. The attackers can then be tracked down on the link level and/or disconnected.
@@ -44,3 +51,5 @@ Interesting statistics:
 - Average snooped distance from optimum
 - Location stability (how often do we see nodes on this link change location)
 - Illogical swap (node swaps to a location that would cause it to flow over another link)
+
+[pitchblack]: http://grothoff.org/christian/pitchblack.pdf "Routing in the Dark: Pitch Black"
