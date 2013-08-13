@@ -25,7 +25,7 @@ The algorithm is done and protocol design is taking shape. No code has yet been 
 ## Contributing
 Currently its most important to get the design clear and without flaws. You can help by asking questions if things are unclear. Also, if you can think of situations in which the system might not function optimally or of possible attacks please let us know as soon as possible. You can either use the Github bug tracker or post to the mailing list.
 
-To subscribe to the mailing list send an email to wanderlust-request@freelists.org with 'subscribe' in the Subject field OR by visiting the list page at http://www.freelists.org/list/wanderlust To post on the list, simply send email to wanderlust@freelists.org. Please introduce yourself if you are interested in the project. The list is suitable for questions, remarks and information relevant to Wanderlust. There will also be periodic updates about the status of the project.
+To subscribe to the mailing list send an email to wanderlust-request@freelists.org with 'subscribe' in the Subject field OR by visiting the list page at http://www.freelists.org/list/wanderlust To post on the list, simply send email to wanderlust@freelists.org Please introduce yourself if you are interested in the project. The list is suitable for questions, remarks and information relevant to Wanderlust. There will also be periodic updates about the status of the project.
 
 You are encouraged to fork this repository and make any changes that you think are improvements. Please send a pull request if you think your work is ready for inclusion. Corrections of spelling and grammar definitely count as improvements.
 
