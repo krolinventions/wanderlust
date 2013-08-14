@@ -1,29 +1,37 @@
 # Wanderlust
 Wanderlust - A Worldwide Network with Distributed Routing through Location Swapping
 
-The centralized nature of the current Internet allows for easy censoring and invasion of privacy. Current technical solutions are not sufficient. Wanderlust is a decentralized overlay/mesh network compatible with existing IPv6 aware applications that aims to fix this. Nodes have an IPv6 addresses which is created from their public key. A node connects to a number of peers over the normal Internet or through private links. The connections between nodes are assumed to form a small world network and location swapping is used to assign every node a location that is close to its directly connected peers. Using the location gradient packets can then be routed to nodes. A DHT provides a global location lookup for any address. Encryption is used throughout the network to provide privacy and prevent attacks on the network.
+The centralized nature of the current Internet allows for easy censoring and invasion of privacy. Current technical solutions are not sufficient. Wanderlust is a decentralized mesh/overlay network compatible with existing IPv6 aware applications that aims to fix this. Nodes have an IPv6 addresses which is created from their public key. A node connects to a number of peers over the normal Internet or through private links. The connections between nodes are assumed to form a small world network and location swapping is used to assign every node a location that is close to its directly connected peers. Using the location gradient packets can then be routed to nodes. A DHT provides a global location lookup for any address. Encryption is used throughout the network to provide privacy and prevent attacks on the network.
+
+Wanderlust is inspired by Freenet and Cjdns.
 
 ## Goals
-This project aims for the following:
-- A routing algorithm that allows for efficient decentralized routing.
+The goal of Wanderlust is to deliver the same connectivity as the classical Internet but with less centralization and more privacy.
+
+Subgoals are:
+
+- A routing algorithm that allows for efficient and robust decentralized routing.
 - A protocol that allows for the communication needed for the implementation of the algorithm and for the transfer of the information itself, safely and securely.
 - The design and implementation of an application that implements the routing algorithm and the protocol.
 - A global network of nodes that can communicate without fear of censorship or privacy violations.
 
 ## Status
-The algorithm is done and protocol design is taking shape. No code has yet been written. It is possible that Wanderlust could be most easily implemented as a component of Cjdns or as a fork.
+The algorithm is ready to be reviewed. Protocol design is taking shape. No code has yet been written, and it is unclear whether Wanderlust could best be implemented as:
 
-1. Routing algorithm design - completed
+- a new routing engine for Cjdns
+- a new mode of operation for Freenet
+- a completely separate project
+
+These are the steps needed to reach the project goal and their status:
+
+1. Routing algorithm design - looking for feedback
 2. Protocol design - in progress
 3. Software design
-4. Tunnel: two nodes, packets in, packets out, only type 0 messages
-5. Proto-Relay: three nodes, switching based on directly connected address
-6. Relay: proto-relay with location swapping
-7. Node: relay + DHT for global routing
-8. Grow the network
+4. Software implementation
+5. Promote and grow the network
 
 ## Contributing
-Currently its most important to get the design clear and without flaws. You can help by asking questions if things are unclear. Also, if you can think of situations in which the system might not function optimally or of possible attacks please let us know as soon as possible. You can either use the Github bug tracker or post to the mailing list.
+Currently its most important to get the design clear and without flaws. You can help by asking questions if things are unclear. Also, if you can think of situations in which the system might not function optimally or of possible attacks please let us know. You can either use the Github bug tracker or post to the mailing list.
 
 To subscribe to the mailing list send an email to wanderlust-request@freelists.org with 'subscribe' in the Subject field OR by visiting the list page at http://www.freelists.org/list/wanderlust To post on the list, simply send email to wanderlust@freelists.org Please introduce yourself if you are interested in the project. The list is suitable for questions, remarks and information relevant to Wanderlust. There will also be periodic updates about the status of the project.
 
