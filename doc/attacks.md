@@ -36,6 +36,8 @@ If a node joins the network for the first time, swaps his location with another 
 
 Mitigation: We need to make sure we keep enough entropy in the network. This can be done by periodically and randomly modifying a nodes location a little bit. The small change will not significantly impact routing but the added entropy will hopefully keep the network healthy.
 
+Mitigation #2 (by Freenet): find out how close nodes are typically (pick a random key, do a probe, take the average over 5 random keys), if your peers are a lot closer than that then randomise. Also see the [Freenet bug for this](https://bugs.freenetproject.org/view.php?id=3919).
+
 ## Evil core router
 A centrally connected node that passes a lot of traffic can decide to drop traffic from or to a certain target. This does not have to be all traffic, a packet loss of 10% would already be very annoying.
 
