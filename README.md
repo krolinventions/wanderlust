@@ -43,6 +43,7 @@ Please read the following if you want to know more about the design or implement
 
 - [Why the need for Wanderlust?](doc/why-wanderlust.md)
 - [Routing](doc/routing.md)
+- [Simulation](doc/simulation.md)
 - [Protocol](doc/protocol.md)
 - [Attacks](doc/attacks.md)
 - [FAQ](doc/faq.md)
