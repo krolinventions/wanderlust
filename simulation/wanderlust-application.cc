@@ -74,113 +74,57 @@ Wanderlust::DoDispose (void)
 void 
 Wanderlust::StartApplication (void)
 {
-  NS_LOG_FUNCTION (this);
+    NS_LOG_FUNCTION (this);
 
-  if (m_socket == 0)
-    {
-      TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-      m_socket = Socket::CreateSocket (GetNode (), tid);
-      InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), m_port);
-      m_socket->Bind (local);
-      if (addressUtils::IsMulticast (m_local))
-        {
-          Ptr<UdpSocket> udpSocket = DynamicCast<UdpSocket> (m_socket);
-          if (udpSocket)
-            {
-              // equivalent to setsockopt (MCAST_JOIN_GROUP)
-              udpSocket->MulticastJoinGroup (0, m_local);
-            }
-          else
-            {
-              NS_FATAL_ERROR ("Error: Failed to join multicast group");
-            }
-        }
+    if (m_socket == 0) {
+        TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+        m_socket = Socket::CreateSocket (GetNode (), tid);
+        InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 6556);
+        m_socket->Bind (local);
+        m_socket->SetAllowBroadcast(true);
     }
 
-  if (m_socket6 == 0)
-    {
-      TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-      m_socket6 = Socket::CreateSocket (GetNode (), tid);
-      Inet6SocketAddress local6 = Inet6SocketAddress (Ipv6Address::GetAny (), m_port);
-      m_socket6->Bind (local6);
-      if (addressUtils::IsMulticast (local6))
-        {
-          Ptr<UdpSocket> udpSocket = DynamicCast<UdpSocket> (m_socket6);
-          if (udpSocket)
-            {
-              // equivalent to setsockopt (MCAST_JOIN_GROUP)
-              udpSocket->MulticastJoinGroup (0, local6);
-            }
-          else
-            {
-              NS_FATAL_ERROR ("Error: Failed to join multicast group");
-            }
-        }
-    }
+    m_socket->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
 
-  m_socket->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
-  m_socket6->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
+    m_sendEvent = Simulator::Schedule(Seconds (0.), &Wanderlust::SendSwapRequest, this);
 }
 
 void 
 Wanderlust::StopApplication ()
 {
-  NS_LOG_FUNCTION (this);
+    NS_LOG_FUNCTION (this);
 
-  if (m_socket != 0) 
-    {
-      m_socket->Close ();
-      m_socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
+    if (m_socket != 0) {
+        m_socket->Close ();
+        m_socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
     }
-  if (m_socket6 != 0) 
-    {
-      m_socket6->Close ();
-      m_socket6->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
-    }
+    Simulator::Cancel (m_sendEvent);
 }
 
 void 
 Wanderlust::HandleRead (Ptr<Socket> socket)
 {
-  NS_LOG_FUNCTION (this << socket);
+    NS_LOG_FUNCTION (this << socket);
 
-  Ptr<Packet> packet;
-  Address from;
-  while ((packet = socket->RecvFrom (from)))
+    Ptr<Packet> packet;
+    Address from;
+    while ((packet = socket->RecvFrom (from)))
     {
-      if (InetSocketAddress::IsMatchingType (from))
-        {
-          NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server received " << packet->GetSize () << " bytes from " <<
-                       InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
-                       InetSocketAddress::ConvertFrom (from).GetPort ());
-        }
-      else if (Inet6SocketAddress::IsMatchingType (from))
-        {
-          NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server received " << packet->GetSize () << " bytes from " <<
-                       Inet6SocketAddress::ConvertFrom (from).GetIpv6 () << " port " <<
-                       Inet6SocketAddress::ConvertFrom (from).GetPort ());
-        }
-
-      packet->RemoveAllPacketTags ();
-      packet->RemoveAllByteTags ();
-
-      NS_LOG_LOGIC ("Echoing packet");
-      socket->SendTo (packet, 0, from);
-      socket->SendTo (packet, 0, from);
-
-      if (InetSocketAddress::IsMatchingType (from))
-        {
-          NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server sent 2x " << packet->GetSize () << " bytes to " <<
-                       InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
-                       InetSocketAddress::ConvertFrom (from).GetPort ());
-        }
-      else if (Inet6SocketAddress::IsMatchingType (from))
-        {
-          NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server sent 2x " << packet->GetSize () << " bytes to " <<
-                       Inet6SocketAddress::ConvertFrom (from).GetIpv6 () << " port " <<
-                       Inet6SocketAddress::ConvertFrom (from).GetPort ());
-        }
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server received " << packet->GetSize () << " bytes from " <<
+            InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
+            InetSocketAddress::ConvertFrom (from).GetPort ());
     }
+}
+
+void Wanderlust::SendSwapRequest(void) {
+    NS_LOG_FUNCTION(this);
+    
+    NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server sends a packet");
+    Ptr<Packet> p = Create<Packet>(1000);
+    //m_txTrace (p); ??
+
+    m_socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+    m_sendEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
 }
 
 } // Namespace ns3

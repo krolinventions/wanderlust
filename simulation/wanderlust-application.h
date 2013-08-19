@@ -46,11 +46,13 @@ private:
   virtual void StopApplication (void);
 
   void HandleRead (Ptr<Socket> socket);
+  void SendSwapRequest(void);
 
   uint16_t m_port;
   Ptr<Socket> m_socket;
   Ptr<Socket> m_socket6;
   Address m_local;
+  EventId m_sendEvent;
 };
 
 } // namespace ns3

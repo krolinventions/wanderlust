@@ -62,20 +62,11 @@ int main (int argc, char *argv[]) {
 
     Ipv4InterfaceContainer interfaces = address.Assign (devices);
 
-    WanderlustHelper echoServer (9);
+    WanderlustHelper wanderlustServer(6556);
 
-    ApplicationContainer serverApps = echoServer.Install (nodes.Get (1));
+    ApplicationContainer serverApps = wanderlustServer.Install(nodes);
     serverApps.Start (Seconds (1.0));
     serverApps.Stop (Seconds (10.0));
-
-    UdpEchoClientHelper echoClient (interfaces.GetAddress (1), 9);
-    echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
-    echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
-    echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
-
-    ApplicationContainer clientApps = echoClient.Install (nodes.Get (0));
-    clientApps.Start (Seconds (2.0));
-    clientApps.Stop (Seconds (20.0));
 
     Simulator::Run ();
     Simulator::Destroy ();
