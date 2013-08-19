@@ -62,7 +62,7 @@ int main (int argc, char *argv[]) {
 
     Ipv4InterfaceContainer interfaces = address.Assign (devices);
 
-    WanderlustHelper wanderlustServer(6556);
+    WanderlustHelper wanderlustServer;
 
     ApplicationContainer serverApps = wanderlustServer.Install(nodes);
     serverApps.Start (Seconds (1.0));

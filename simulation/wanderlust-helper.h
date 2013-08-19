@@ -40,10 +40,8 @@ public:
   /**
    * Create UdpEchoServerHelper which will make life easier for people trying
    * to set up simulations with echos.
-   *
-   * \param port The port the server will wait on for incoming packets
    */
-  WanderlustHelper (uint16_t port);
+  WanderlustHelper ();
 
   /**
    * Record an attribute to be set in each Application after it is is created.

@@ -27,10 +27,9 @@
 
 namespace ns3 {
 
-WanderlustHelper::WanderlustHelper (uint16_t port)
+WanderlustHelper::WanderlustHelper ()
 {
   m_factory.SetTypeId (Wanderlust::GetTypeId ());
-  SetAttribute ("Port", UintegerValue (port));
 }
 
 void 

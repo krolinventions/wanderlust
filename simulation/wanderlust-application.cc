@@ -43,12 +43,7 @@ Wanderlust::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::Wanderlust")
     .SetParent<Application> ()
-    .AddConstructor<Wanderlust> ()
-    .AddAttribute ("Port", "Port on which we listen for incoming packets.",
-                   UintegerValue (9),
-                   MakeUintegerAccessor (&Wanderlust::m_port),
-                   MakeUintegerChecker<uint16_t> ())
-  ;
+    .AddConstructor<Wanderlust> ();
   return tid;
 }
 
@@ -61,7 +56,6 @@ Wanderlust::~Wanderlust()
 {
   NS_LOG_FUNCTION (this);
   m_socket = 0;
-  m_socket6 = 0;
 }
 
 void
