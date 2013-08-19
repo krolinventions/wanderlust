@@ -110,7 +110,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
     Address from;
     while ((packet = socket->RecvFrom (from)))
     {
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server received " << packet->GetSize () << " bytes from " <<
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() << " received " << packet->GetSize () << " bytes from " <<
             InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
             InetSocketAddress::ConvertFrom (from).GetPort ());
     }
@@ -119,7 +119,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
 void Wanderlust::SendSwapRequest(void) {
     NS_LOG_FUNCTION(this);
     
-    NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s server sends a packet");
+    NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() <<  " sends a swaprequest packet");
     Ptr<Packet> p = Create<Packet>(1000);
     //m_txTrace (p); ??
 
