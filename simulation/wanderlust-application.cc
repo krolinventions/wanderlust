@@ -30,6 +30,8 @@
 #include "ns3/socket-factory.h"
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
+#include "ns3/channel.h"
+#include "ns3/ipv4.h"
 
 #include "wanderlust-application.h"
 
@@ -55,7 +57,6 @@ Wanderlust::Wanderlust ()
 Wanderlust::~Wanderlust()
 {
   NS_LOG_FUNCTION (this);
-  m_socket = 0;
 }
 
 void
@@ -70,15 +71,25 @@ Wanderlust::StartApplication (void)
 {
     NS_LOG_FUNCTION (this);
 
-    if (m_socket == 0) {
+    // We enumerate all our network devices and bind a socket to every one of them
+    for (unsigned int i=0;i<GetNode()->GetNDevices();i++) {
+        Ptr<NetDevice> device = GetNode()->GetDevice(i);
+        if (!device->GetChannel()) continue; // it's not connected
+        NS_LOG_INFO ( "Node " << GetNode()->GetId() << " Found network device " << device->GetAddress() << " channel " << device->GetChannel());
+        
+        Ptr<Ipv4> ipv4 = GetNode()->GetObject<Ipv4>();
+        Ipv4InterfaceAddress iaddr = ipv4->GetAddress(ipv4->GetInterfaceForDevice(device),0);
+        
         TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-        m_socket = Socket::CreateSocket (GetNode (), tid);
-        InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 6556);
-        m_socket->Bind (local);
-        m_socket->SetAllowBroadcast(true);
+        Ptr<Socket> socket = Socket::CreateSocket (GetNode (), tid);
+        InetSocketAddress local = InetSocketAddress (iaddr.GetLocal(), 6556);
+        int result = socket->Bind(local);
+        socket->BindToNetDevice(device);
+        NS_LOG_INFO ( "Binding to " << InetSocketAddress::ConvertFrom (local).GetIpv4 () << " result " << result << " bound to " << socket->GetBoundNetDevice());
+        socket->SetAllowBroadcast(true);
+        socket->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
+        sockets.push_back(socket);
     }
-
-    m_socket->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
 
     m_sendEvent = Simulator::Schedule(Seconds (0.), &Wanderlust::SendSwapRequest, this);
 }
@@ -87,10 +98,11 @@ void
 Wanderlust::StopApplication ()
 {
     NS_LOG_FUNCTION (this);
-
-    if (m_socket != 0) {
-        m_socket->Close ();
-        m_socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
+    
+    for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
+        Ptr<Socket> socket = *it;
+        socket->Close ();
+        socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
     }
     Simulator::Cancel (m_sendEvent);
 }
@@ -113,11 +125,14 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
 void Wanderlust::SendSwapRequest(void) {
     NS_LOG_FUNCTION(this);
     
-    NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() <<  " sends a swaprequest packet");
-    Ptr<Packet> p = Create<Packet>(1000);
-    //m_txTrace (p); ??
+    for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
+        Ptr<Socket> socket = *it;
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() <<  " sends a swaprequest packet");
+        Ptr<Packet> p = Create<Packet>(1000+GetNode()->GetId());
+        //m_txTrace (p); ??
 
-    m_socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+        socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+    }
     m_sendEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
 }
 

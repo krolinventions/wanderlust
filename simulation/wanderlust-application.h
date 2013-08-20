@@ -24,6 +24,7 @@
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
 #include "ns3/address.h"
+#include <vector>
 
 namespace ns3 {
 
@@ -48,7 +49,7 @@ private:
   void HandleRead (Ptr<Socket> socket);
   void SendSwapRequest(void);
 
-  Ptr<Socket> m_socket;
+  std::vector< Ptr<Socket> > sockets;
   Address m_local;
   EventId m_sendEvent;
 };

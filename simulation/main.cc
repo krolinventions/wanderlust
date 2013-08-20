@@ -45,22 +45,30 @@ int main (int argc, char *argv[]) {
 
     NS_LOG_INFO ("Creating Topology...");
     NodeContainer nodes;
-    nodes.Create (2);
+    nodes.Create (4);
 
     PointToPointHelper pointToPoint;
     pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1Mbps"));
     pointToPoint.SetChannelAttribute ("Delay", StringValue ("20ms"));
 
-    NetDeviceContainer devices;
-    devices = pointToPoint.Install (nodes);
+    NetDeviceContainer d01 = pointToPoint.Install (nodes.Get(0), nodes.Get(1));
+    NetDeviceContainer d12 = pointToPoint.Install (nodes.Get(1), nodes.Get(2));
+    NetDeviceContainer d23 = pointToPoint.Install (nodes.Get(2), nodes.Get(3));
+    NetDeviceContainer d30 = pointToPoint.Install (nodes.Get(3), nodes.Get(0));
 
     InternetStackHelper stack;
     stack.Install (nodes);
 
     Ipv4AddressHelper address;
-    address.SetBase ("10.1.1.0", "255.255.255.0");
-
-    Ipv4InterfaceContainer interfaces = address.Assign (devices);
+    address.SetBase ("10.0.0.0", "255.255.255.252");
+    address.Assign (d01);
+    address.NewNetwork();
+    address.Assign (d12);
+    address.NewNetwork();
+    address.Assign (d23);
+    address.NewNetwork();
+    address.Assign (d30);
+    address.NewNetwork();
 
     WanderlustHelper wanderlustServer;
 
