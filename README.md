@@ -16,7 +16,7 @@ Subgoals are:
 - A global network of nodes that can communicate without fear of censorship or privacy violations.
 
 ## Status
-The algorithm is ready to be reviewed. Protocol design is taking shape. No code has yet been written, and it is unclear whether Wanderlust could best be implemented as:
+The algorithm is ready to be reviewed. Protocol design is taking shape. Currently a simulation is being developed. It is still unclear whether Wanderlust could best be implemented as:
 
 - a new routing engine for Cjdns
 - a new mode of operation for Freenet
