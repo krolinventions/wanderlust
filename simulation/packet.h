@@ -36,3 +36,12 @@ typedef struct {
     uint8_t dst_location[16];
     uint8_t signature[64];
 } wanderlust_header_t;
+
+enum {
+    WANDERLUST_TYPE_DATA=0,
+    WANDERLUST_TYPE_SWAP_REQUEST,
+    WANDERLUST_TYPE_SWAP_RESPONSE,
+    WANDERLUST_TYPE_SWAP_CONFIRMATION,
+    WANDERLUST_TYPE_LOCATION_QUERY,
+    WANDERLUST_TYPE_LOCATION_ANSWER
+};

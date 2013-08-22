@@ -42,7 +42,16 @@ public:
         return sizeof(wanderlust_header_t);
     }
     virtual void Print(std::ostream &os) const {
-        os << "Wanderlust packet type " << (int)contents.message_type;
+        os << "Wanderlust packet type ";
+        switch (contents.message_type) {
+            case 0: os << "DATA"; break;
+            case 1: os << "SWAP REQUEST"; break;
+            case 2: os << "SWAP RESPONSE"; break;
+            case 3: os << "SWAP CONFIRMATION"; break;
+            case 4: os << "LOCATION QUERY"; break;
+            case 5: os << "LOCATION ANSWER"; break;
+            default: os << "UNKNOWN";
+        }
     }
     virtual TypeId GetInstanceTypeId (void) const {
         return m_tid;

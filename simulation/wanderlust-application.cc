@@ -135,7 +135,7 @@ void Wanderlust::SendSwapRequest(void) {
         Ptr<Packet> p = Create<Packet>(1000+GetNode()->GetId());
         //m_txTrace (p); ??
         WanderlustHeader header;
-        header.contents.message_type = 1;
+        header.contents.message_type = WANDERLUST_TYPE_SWAP_REQUEST;
         p->AddHeader(header);
         socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
     }
