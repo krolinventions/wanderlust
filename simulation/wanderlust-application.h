@@ -53,7 +53,7 @@ private:
   void SendHello(void);
 
   /// Lower is better
-  double calculatePositionError(location_t &location);
+  double calculateLocationError(location_t &location);
 
   std::vector< Ptr<Socket> > sockets;
   Address m_local;

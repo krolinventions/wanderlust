@@ -135,7 +135,25 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
         NS_LOG_INFO (header);
         switch (header.contents.message_type) {
             case WANDERLUST_TYPE_DATA: break;
-            case WANDERLUST_TYPE_SWAP_REQUEST: break;
+            case WANDERLUST_TYPE_SWAP_REQUEST: {
+                // check if we would improve
+                double oldLocationError = calculateLocationError(location);
+                double newLocationError = calculateLocationError(header.contents.src_location);
+                NS_LOG_INFO("Old location error " << oldLocationError << " new location error " << newLocationError);
+                if (oldLocationError > newLocationError) {
+                    NS_LOG_INFO("Detected potentially advantageous swap, responding");
+                    Ptr<Packet> swapResponsePacket = Create<Packet>();
+                    WanderlustHeader swapResponseHeader;
+                    swapResponseHeader.contents.src_location = location;
+                    swapResponseHeader.contents.src_pubkey = pubkey;
+                    swapResponseHeader.contents.dst_location = header.contents.src_location;
+                    swapResponseHeader.contents.dst_pubkey = header.contents.src_pubkey;
+                    swapResponseHeader.contents.message_type = WANDERLUST_TYPE_SWAP_RESPONSE;
+                    swapResponsePacket->AddHeader(swapResponseHeader);
+                    socket->SendTo(swapResponsePacket,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+                }
+                break;
+            }
             case WANDERLUST_TYPE_SWAP_RESPONSE: break;
             case WANDERLUST_TYPE_SWAP_CONFIRMATION: break;
             case WANDERLUST_TYPE_LOCATION_QUERY: break;
@@ -153,7 +171,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                 peers[header.contents.src_pubkey].socket = socket;
 
                 // log our current error
-                NS_LOG_INFO("Node " << pubkey.getShortId() << " location error " << calculatePositionError(location));
+                NS_LOG_INFO("Node " << pubkey.getShortId() << " location error " << calculateLocationError(location));
                 break;
             default:
                 break;
@@ -200,8 +218,8 @@ void Wanderlust::SendHello(void) {
     m_sendHelloEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendHello, this);
 }
 
-double Wanderlust::calculatePositionError(location_t &location) {
-    double error;
+double Wanderlust::calculateLocationError(location_t &location) {
+    double error = 0;
     for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
         error += abs(*(uint64_t*)it->second.location.data - *(uint64_t*)location.data)/peers.size();
     }

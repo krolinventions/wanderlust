@@ -37,6 +37,8 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("Wanderlust");
 
 int main (int argc, char *argv[]) {
+    srand(time(NULL));
+
     CommandLine cmd;
     cmd.Parse (argc, argv);
     
