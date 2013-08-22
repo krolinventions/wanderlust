@@ -63,6 +63,8 @@ private:
   std::map<pubkey_t, WanderlustPeer> peers;
   pubkey_t pubkey;
   location_t location;
+  bool swapInProgress;
+  double swapTimeOut;
 };
 
 } // namespace ns3

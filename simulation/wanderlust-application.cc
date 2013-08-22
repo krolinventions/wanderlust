@@ -60,6 +60,7 @@ Wanderlust::Wanderlust ()
   NS_LOG_FUNCTION (this);
   fillWithRandomData(pubkey.data, sizeof(pubkey));
   fillWithRandomData(location.data, sizeof(location));
+  swapInProgress = false;
 }
 
 Wanderlust::~Wanderlust()
@@ -99,8 +100,8 @@ Wanderlust::StartApplication (void)
         sockets.push_back(socket);
     }
 
-    m_sendSwapRequestEvent = Simulator::Schedule(Seconds (0.), &Wanderlust::SendSwapRequest, this);
-    m_sendHelloEvent = Simulator::Schedule(Seconds (0.), &Wanderlust::SendHello, this);
+    m_sendSwapRequestEvent = Simulator::Schedule(Seconds (rand()%50/10.0+10), &Wanderlust::SendSwapRequest, this);
+    m_sendHelloEvent = Simulator::Schedule(Seconds (rand()%50/10.0), &Wanderlust::SendHello, this);
 }
 
 void 
@@ -136,6 +137,8 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
         switch (header.contents.message_type) {
             case WANDERLUST_TYPE_DATA: break;
             case WANDERLUST_TYPE_SWAP_REQUEST: {
+                if (swapInProgress)
+                    break;
                 // check if we would improve
                 double oldLocationError = calculateLocationError(location);
                 double newLocationError = calculateLocationError(header.contents.src_location);
@@ -151,11 +154,60 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                     swapResponseHeader.contents.message_type = WANDERLUST_TYPE_SWAP_RESPONSE;
                     swapResponsePacket->AddHeader(swapResponseHeader);
                     socket->SendTo(swapResponsePacket,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+                    swapInProgress = true;
+                    swapTimeOut = Simulator::Now().GetSeconds() + 10;
                 }
                 break;
             }
-            case WANDERLUST_TYPE_SWAP_RESPONSE: break;
-            case WANDERLUST_TYPE_SWAP_CONFIRMATION: break;
+            case WANDERLUST_TYPE_SWAP_RESPONSE: {
+                // we've got a response, check if it would be a good idea to swap
+                if (header.contents.dst_location != location) {
+                    NS_LOG_INFO("FIXME: Our location has changed in the meantime, discarding");
+                    swapInProgress = false;
+                    break;
+                }
+
+                double oldLocationError = calculateLocationError(location);
+                double newLocationError = calculateLocationError(header.contents.src_location);
+                NS_LOG_INFO("Old location error " << oldLocationError << " new location error " << newLocationError);
+                if (oldLocationError > newLocationError) {
+                    NS_LOG_INFO("SWAPPING on response");
+                    Ptr<Packet> swapResponsePacket = Create<Packet>();
+                    WanderlustHeader swapResponseHeader;
+                    swapResponseHeader.contents.src_location = location;
+                    swapResponseHeader.contents.src_pubkey = pubkey;
+                    swapResponseHeader.contents.dst_location = header.contents.src_location;
+                    swapResponseHeader.contents.dst_pubkey = header.contents.src_pubkey;
+                    swapResponseHeader.contents.message_type = WANDERLUST_TYPE_SWAP_CONFIRMATION;
+                    swapResponsePacket->AddHeader(swapResponseHeader);
+                    socket->SendTo(swapResponsePacket,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+                    // FIXME: keep sending until we receive a confirmation
+
+                    // perform the swap
+                    location = header.contents.src_location;
+                    swapInProgress = true;
+                    swapTimeOut = Simulator::Now().GetSeconds() + 10;
+                }
+                break;
+            }
+            case WANDERLUST_TYPE_SWAP_CONFIRMATION: {
+                swapInProgress = false;
+                // we've got a response, check if it would be a good idea to swap
+                if (header.contents.dst_location != location) {
+                    NS_LOG_INFO("FIXME: Our location has changed in the meantime, discarding");
+                    break;
+                }
+
+                double oldLocationError = calculateLocationError(location);
+                double newLocationError = calculateLocationError(header.contents.src_location);
+                NS_LOG_INFO("Old location error " << oldLocationError << " new location error " << newLocationError);
+                if (oldLocationError > newLocationError) {
+                    NS_LOG_INFO("SWAPPING on confirmation");
+                    // perform the swap
+                    location = header.contents.src_location;
+                }
+                break;
+            }
             case WANDERLUST_TYPE_LOCATION_QUERY: break;
             case WANDERLUST_TYPE_LOCATION_ANSWER: break;
             case WANDERLUST_TYPE_HELLO:
@@ -182,20 +234,37 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
 void Wanderlust::SendSwapRequest(void) {
     NS_LOG_FUNCTION(this);
     
-    for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
-        WanderlustPeer &peer = it->second;
+    if (swapInProgress && swapTimeOut < Simulator::Now().GetSeconds()) {
+        NS_LOG_INFO("Swap timeout!");
+        swapInProgress = false;
+    }
 
-        Ptr<Packet> p = Create<Packet>();
+    if (!swapInProgress && peers.size()) {
+        int target = rand()%peers.size();
+        for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+            if (target > 0) {
+                target--;
+                continue;
+            }
 
-        WanderlustHeader header;
-        header.contents.message_type = WANDERLUST_TYPE_SWAP_REQUEST;
-        header.contents.src_pubkey = pubkey;
-        header.contents.src_location = location;
-        header.contents.hop_limit = 1;
-        p->AddHeader(header);
+            WanderlustPeer &peer = it->second;
 
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet " << header);
-        peer.socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+            Ptr<Packet> p = Create<Packet>();
+
+            WanderlustHeader header;
+            header.contents.message_type = WANDERLUST_TYPE_SWAP_REQUEST;
+            header.contents.src_pubkey = pubkey;
+            header.contents.src_location = location;
+            header.contents.hop_limit = 1;
+            p->AddHeader(header);
+
+            NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet " << header);
+            peer.socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+
+            swapInProgress = true;
+            swapTimeOut = Simulator::Now().GetSeconds() + 10;
+            break;
+        }
     }
     m_sendSwapRequestEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
 }

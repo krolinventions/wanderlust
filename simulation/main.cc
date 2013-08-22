@@ -76,7 +76,7 @@ int main (int argc, char *argv[]) {
 
     ApplicationContainer serverApps = wanderlustServer.Install(nodes);
     serverApps.Start (Seconds (1.0));
-    serverApps.Stop (Seconds (3.0));
+    serverApps.Stop (Seconds (60.0));
 
     Simulator::Run ();
     Simulator::Destroy ();

@@ -39,9 +39,12 @@ struct pubkey_t {
     }
 };
 
-typedef struct {
+struct location_t {
     uint8_t data[16];
-} location_t;
+    bool operator!=(const location_t &other) const {
+        return (memcmp((void*)data, (void*)other.data, sizeof(data))!=0);
+    }
+};
 
 typedef struct {
     uint8_t data[64];
