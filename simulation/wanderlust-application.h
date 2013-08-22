@@ -25,6 +25,8 @@
 #include "ns3/ptr.h"
 #include "ns3/address.h"
 #include <vector>
+#include <map>
+#include "wanderlustpeer.h"
 
 namespace ns3 {
 
@@ -48,10 +50,16 @@ private:
 
   void HandleRead (Ptr<Socket> socket);
   void SendSwapRequest(void);
+  void SendHello(void);
 
   std::vector< Ptr<Socket> > sockets;
   Address m_local;
-  EventId m_sendEvent;
+  EventId m_sendSwapRequestEvent;
+  EventId m_sendHelloEvent;
+
+  std::map<pubkey_t, WanderlustPeer> peers;
+  pubkey_t pubkey;
+  location_t location;
 };
 
 } // namespace ns3

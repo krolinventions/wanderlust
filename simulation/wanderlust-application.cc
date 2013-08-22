@@ -50,9 +50,16 @@ Wanderlust::GetTypeId (void)
   return tid;
 }
 
+static void fillWithRandomData(uint8_t *buffer, size_t size) {
+    for (size_t i=0;i< size;i++)
+        buffer[i] = rand()%256;
+}
+
 Wanderlust::Wanderlust ()
 {
   NS_LOG_FUNCTION (this);
+  fillWithRandomData(pubkey.data, sizeof(pubkey));
+  fillWithRandomData(location.data, sizeof(location));
 }
 
 Wanderlust::~Wanderlust()
@@ -92,7 +99,8 @@ Wanderlust::StartApplication (void)
         sockets.push_back(socket);
     }
 
-    m_sendEvent = Simulator::Schedule(Seconds (0.), &Wanderlust::SendSwapRequest, this);
+    m_sendSwapRequestEvent = Simulator::Schedule(Seconds (0.), &Wanderlust::SendSwapRequest, this);
+    m_sendHelloEvent = Simulator::Schedule(Seconds (0.), &Wanderlust::SendHello, this);
 }
 
 void 
@@ -105,24 +113,47 @@ Wanderlust::StopApplication ()
         socket->Close ();
         socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
     }
-    Simulator::Cancel (m_sendEvent);
+    Simulator::Cancel (m_sendSwapRequestEvent);
+    Simulator::Cancel (m_sendHelloEvent);
 }
 
 void 
 Wanderlust::HandleRead (Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION (this << socket);
+    socket->GetBoundNetDevice()->GetIfIndex();
 
     Ptr<Packet> packet;
     Address from;
     while ((packet = socket->RecvFrom (from)))
     {
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() << " received " << packet->GetSize () << " bytes from " <<
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() << " received " << packet->GetSize () << " bytes from " <<
             InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
             InetSocketAddress::ConvertFrom (from).GetPort ());
         WanderlustHeader header;
         packet->RemoveHeader(header);
         NS_LOG_INFO (header);
+        switch (header.contents.message_type) {
+            case WANDERLUST_TYPE_DATA: break;
+            case WANDERLUST_TYPE_SWAP_REQUEST: break;
+            case WANDERLUST_TYPE_SWAP_RESPONSE: break;
+            case WANDERLUST_TYPE_SWAP_CONFIRMATION: break;
+            case WANDERLUST_TYPE_LOCATION_QUERY: break;
+            case WANDERLUST_TYPE_LOCATION_ANSWER: break;
+            case WANDERLUST_TYPE_HELLO:
+                // we've received an awesome hello packet
+                // hello other node! want to be friends?
+                // well, let's add it to our list
+                if (peers.count(header.contents.src_pubkey) == 0) {
+                    // we don't have it yet, create a new one
+                    peers[header.contents.src_pubkey] = WanderlustPeer();
+                }
+                // update the location
+                peers[header.contents.src_pubkey].location = header.contents.src_location;
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -131,15 +162,37 @@ void Wanderlust::SendSwapRequest(void) {
     
     for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
         Ptr<Socket> socket = *it;
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() <<  " sends a swaprequest packet");
-        Ptr<Packet> p = Create<Packet>(1000+GetNode()->GetId());
-        //m_txTrace (p); ??
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet");
+
+        Ptr<Packet> p = Create<Packet>();
+
         WanderlustHeader header;
         header.contents.message_type = WANDERLUST_TYPE_SWAP_REQUEST;
+        header.contents.src_pubkey = pubkey;
+        header.contents.src_location = location;
+        header.contents.hop_limit = 1;
+        p->AddHeader(header);
+
+        socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+    }
+    m_sendSwapRequestEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
+}
+
+void Wanderlust::SendHello(void) {
+    NS_LOG_FUNCTION(this);
+
+    for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
+        Ptr<Socket> socket = *it;
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet");
+        Ptr<Packet> p = Create<Packet>();
+        //m_txTrace (p); ??
+        WanderlustHeader header;
+        header.contents.message_type = WANDERLUST_TYPE_HELLO;
+        header.contents.src_pubkey = pubkey;
         p->AddHeader(header);
         socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
     }
-    m_sendEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
+    m_sendHelloEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendHello, this);
 }
 
 } // Namespace ns3

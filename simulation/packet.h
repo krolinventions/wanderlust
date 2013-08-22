@@ -21,6 +21,32 @@
  * THE SOFTWARE.
  */
 
+#ifndef WANDERLUST_PACKET_H
+#define WANDERLUST_PACKET_H
+
+// Note: all data is stored in network byte order (big endian)
+struct pubkey_t {
+    uint8_t data[32];
+    bool operator<(const pubkey_t &other) const {
+        for (size_t i=0;i<sizeof(data);i++) {
+            if (data[i] < other.data[i]) return true;
+            if (data[i] > other.data[i]) return false;
+        }
+        return false;
+    }
+    uint16_t getShortId() const {
+        return *(uint16_t*)data;
+    }
+};
+
+typedef struct {
+    uint8_t data[16];
+} location_t;
+
+typedef struct {
+    uint8_t data[64];
+} signature_t;
+
 typedef struct {
     uint8_t version;
     uint8_t header_length;
@@ -30,11 +56,11 @@ typedef struct {
     uint8_t flow_id1;
     uint8_t flow_id2;
     uint8_t flow_id3;
-    uint8_t src_pubkey[32];
-    uint8_t dst_pubkey[32];
-    uint8_t src_location[16];
-    uint8_t dst_location[16];
-    uint8_t signature[64];
+    pubkey_t src_pubkey;
+    pubkey_t dst_pubkey;
+    location_t src_location;
+    location_t dst_location;
+    signature_t signature;
 } wanderlust_header_t;
 
 enum {
@@ -43,5 +69,8 @@ enum {
     WANDERLUST_TYPE_SWAP_RESPONSE,
     WANDERLUST_TYPE_SWAP_CONFIRMATION,
     WANDERLUST_TYPE_LOCATION_QUERY,
-    WANDERLUST_TYPE_LOCATION_ANSWER
+    WANDERLUST_TYPE_LOCATION_ANSWER,
+    WANDERLUST_TYPE_HELLO
 };
+
+#endif

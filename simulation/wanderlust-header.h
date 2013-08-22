@@ -29,7 +29,7 @@ namespace ns3 {
 class WanderlustHeader: public Header {
 public:
     WanderlustHeader() {
-        memset(&contents, sizeof(wanderlust_header_t), 0);
+        memset(&contents, 0, sizeof(wanderlust_header_t));
     }
     virtual uint32_t GetSerializedSize(void) const {
         return sizeof(wanderlust_header_t);
@@ -42,16 +42,18 @@ public:
         return sizeof(wanderlust_header_t);
     }
     virtual void Print(std::ostream &os) const {
-        os << "Wanderlust packet type ";
+        os << "Wanderlust packet " << contents.src_pubkey.getShortId() << " => " << contents.dst_pubkey.getShortId() << " type ";
         switch (contents.message_type) {
-            case 0: os << "DATA"; break;
-            case 1: os << "SWAP REQUEST"; break;
-            case 2: os << "SWAP RESPONSE"; break;
-            case 3: os << "SWAP CONFIRMATION"; break;
-            case 4: os << "LOCATION QUERY"; break;
-            case 5: os << "LOCATION ANSWER"; break;
+            case WANDERLUST_TYPE_DATA: os << "DATA"; break;
+            case WANDERLUST_TYPE_SWAP_REQUEST: os << "SWAP REQUEST"; break;
+            case WANDERLUST_TYPE_SWAP_RESPONSE: os << "SWAP RESPONSE"; break;
+            case WANDERLUST_TYPE_SWAP_CONFIRMATION: os << "SWAP CONFIRMATION"; break;
+            case WANDERLUST_TYPE_LOCATION_QUERY: os << "LOCATION QUERY"; break;
+            case WANDERLUST_TYPE_LOCATION_ANSWER: os << "LOCATION ANSWER"; break;
+            case WANDERLUST_TYPE_HELLO: os << "HELLO"; break;
             default: os << "UNKNOWN";
         }
+
     }
     virtual TypeId GetInstanceTypeId (void) const {
         return m_tid;
