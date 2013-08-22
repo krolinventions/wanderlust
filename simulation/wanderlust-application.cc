@@ -150,6 +150,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                 }
                 // update the location
                 peers[header.contents.src_pubkey].location = header.contents.src_location;
+                peers[header.contents.src_pubkey].socket = socket;
                 break;
             default:
                 break;
@@ -160,9 +161,8 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
 void Wanderlust::SendSwapRequest(void) {
     NS_LOG_FUNCTION(this);
     
-    for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
-        Ptr<Socket> socket = *it;
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet");
+    for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+        WanderlustPeer &peer = it->second;
 
         Ptr<Packet> p = Create<Packet>();
 
@@ -173,7 +173,8 @@ void Wanderlust::SendSwapRequest(void) {
         header.contents.hop_limit = 1;
         p->AddHeader(header);
 
-        socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet " << header);
+        peer.socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
     }
     m_sendSwapRequestEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
 }
@@ -183,12 +184,13 @@ void Wanderlust::SendHello(void) {
 
     for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
         Ptr<Socket> socket = *it;
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet");
+        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a hello packet");
         Ptr<Packet> p = Create<Packet>();
         //m_txTrace (p); ??
         WanderlustHeader header;
         header.contents.message_type = WANDERLUST_TYPE_HELLO;
         header.contents.src_pubkey = pubkey;
+        header.contents.src_location = location;
         p->AddHeader(header);
         socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
     }

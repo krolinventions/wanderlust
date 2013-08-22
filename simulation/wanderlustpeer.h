@@ -22,11 +22,13 @@
  */
 
 #include "packet.h"
+#include "ns3/socket.h"
 
 class WanderlustPeer {
 public:
     pubkey_t pubkey;
     location_t location;
+    ns3::Ptr<ns3::Socket> socket;
 private:
 
 };
