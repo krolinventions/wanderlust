@@ -34,6 +34,7 @@
 #include "ns3/ipv4.h"
 
 #include "wanderlust-application.h"
+#include "wanderlust-header.h"
 
 namespace ns3 {
 
@@ -119,6 +120,9 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
         NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() << " received " << packet->GetSize () << " bytes from " <<
             InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
             InetSocketAddress::ConvertFrom (from).GetPort ());
+        WanderlustHeader header;
+        packet->RemoveHeader(header);
+        NS_LOG_INFO (header);
     }
 }
 
@@ -130,7 +134,9 @@ void Wanderlust::SendSwapRequest(void) {
         NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << GetNode()->GetId() <<  " sends a swaprequest packet");
         Ptr<Packet> p = Create<Packet>(1000+GetNode()->GetId());
         //m_txTrace (p); ??
-
+        WanderlustHeader header;
+        header.contents.message_type = 1;
+        p->AddHeader(header);
         socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
     }
     m_sendEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
