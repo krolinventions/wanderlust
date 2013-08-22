@@ -52,6 +52,9 @@ private:
   void SendSwapRequest(void);
   void SendHello(void);
 
+  /// Lower is better
+  double calculatePositionError(location_t &location);
+
   std::vector< Ptr<Socket> > sockets;
   Address m_local;
   EventId m_sendSwapRequestEvent;

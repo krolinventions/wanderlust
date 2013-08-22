@@ -151,6 +151,9 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                 // update the location
                 peers[header.contents.src_pubkey].location = header.contents.src_location;
                 peers[header.contents.src_pubkey].socket = socket;
+
+                // log our current error
+                NS_LOG_INFO("Node " << pubkey.getShortId() << " location error " << calculatePositionError(location));
                 break;
             default:
                 break;
@@ -195,6 +198,14 @@ void Wanderlust::SendHello(void) {
         socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
     }
     m_sendHelloEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendHello, this);
+}
+
+double Wanderlust::calculatePositionError(location_t &location) {
+    double error;
+    for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+        error += abs(*(uint64_t*)it->second.location.data - *(uint64_t*)location.data)/peers.size();
+    }
+    return error;
 }
 
 } // Namespace ns3
