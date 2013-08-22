@@ -17,6 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+#include <cmath>
 #include "ns3/log.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/ipv6-address.h"
@@ -290,7 +293,9 @@ void Wanderlust::SendHello(void) {
 double Wanderlust::calculateLocationError(location_t &location) {
     double error = 0;
     for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
-        error += abs(*(uint64_t*)it->second.location.data - *(uint64_t*)location.data)/peers.size();
+        double error1 = std::abs(*(uint64_t*)it->second.location.data/(double)UINT64_MAX - *(uint64_t*)location.data/(double)UINT64_MAX);
+        double error2 = std::abs(*(uint64_t*)it->second.location.data/(double)UINT64_MAX - *(uint64_t*)location.data/(double)UINT64_MAX - 1);
+        error += (error1<error2?error1:error2)/peers.size();
     }
     return error;
 }
