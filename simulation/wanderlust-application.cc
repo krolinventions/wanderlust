@@ -17,8 +17,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
 #include <cmath>
 #include "ns3/log.h"
 #include "ns3/ipv4-address.h"
@@ -83,7 +81,7 @@ void
 Wanderlust::StartApplication (void)
 {
     NS_LOG_FUNCTION (this);
-    pubkey.setShortId(GetNode()->GetId()); // can't do this in the constructor
+    pubkey.setShortId(1000+GetNode()->GetId()); // can't do this in the constructor
 
     // We enumerate all our network devices and bind a socket to every one of them
     for (unsigned int i=0;i<GetNode()->GetNDevices();i++) {
@@ -239,11 +237,6 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
 void Wanderlust::SendSwapRequest(void) {
     NS_LOG_FUNCTION(this);
     
-    if (swapInProgress && swapTimeOut < Simulator::Now().GetSeconds()) {
-        NS_LOG_INFO("Swap timeout!");
-        swapInProgress = false;
-    }
-
     if (!swapInProgress && peers.size()) {
         int target = rand()%peers.size();
         for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
@@ -271,6 +264,12 @@ void Wanderlust::SendSwapRequest(void) {
             break;
         }
     }
+    // do this afterwards so we have some time in which to receive those messages
+    if (swapInProgress && swapTimeOut < Simulator::Now().GetSeconds()) {
+        NS_LOG_INFO("Swap timeout!");
+        swapInProgress = false;
+    }
+
     m_sendSwapRequestEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
 }
 

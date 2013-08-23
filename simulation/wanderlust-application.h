@@ -20,6 +20,8 @@
 #ifndef WANSERLUST_APPLICATION_H
 #define WANSERLUST_APPLICATION_H
 
+#define UINT64_MAX (18446744073709551615ULL)
+
 #include "ns3/application.h"
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
@@ -39,7 +41,12 @@ public:
   static TypeId GetTypeId (void);
   Wanderlust ();
   virtual ~Wanderlust ();
-
+  double getLocation() {
+      return *(uint64_t*)location.data/(double)UINT64_MAX;
+  }
+  double getLocationError() {
+      return calculateLocationError(location);
+  }
 protected:
   virtual void DoDispose (void);
 
