@@ -37,6 +37,9 @@ struct pubkey_t {
     uint16_t getShortId() const {
         return *(uint16_t*)data;
     }
+    void setShortId(uint16_t id) {
+       *(uint16_t*)data = id;
+    }
 };
 
 struct location_t {

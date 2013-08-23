@@ -42,8 +42,7 @@ int main (int argc, char *argv[]) {
     CommandLine cmd;
     cmd.Parse (argc, argv);
     
-    LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
-    LogComponentEnable ("WanderlustApplication", LOG_LEVEL_INFO);
+    LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_NODE));
 
     NS_LOG_INFO ("Creating Topology...");
     NodeContainer nodes;

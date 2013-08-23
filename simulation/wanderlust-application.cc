@@ -64,6 +64,7 @@ Wanderlust::Wanderlust ()
   fillWithRandomData(pubkey.data, sizeof(pubkey));
   fillWithRandomData(location.data, sizeof(location));
   swapInProgress = false;
+  swapTimeOut = Simulator::Now().GetSeconds();
 }
 
 Wanderlust::~Wanderlust()
@@ -82,12 +83,13 @@ void
 Wanderlust::StartApplication (void)
 {
     NS_LOG_FUNCTION (this);
+    pubkey.setShortId(GetNode()->GetId()); // can't do this in the constructor
 
     // We enumerate all our network devices and bind a socket to every one of them
     for (unsigned int i=0;i<GetNode()->GetNDevices();i++) {
         Ptr<NetDevice> device = GetNode()->GetDevice(i);
         if (!device->GetChannel()) continue; // it's not connected
-        NS_LOG_INFO ( "Node " << GetNode()->GetId() << " Found network device " << device->GetAddress() << " channel " << device->GetChannel());
+        NS_LOG_DEBUG ( "Found network device " << device->GetAddress() << " channel " << device->GetChannel());
         
         Ptr<Ipv4> ipv4 = GetNode()->GetObject<Ipv4>();
         Ipv4InterfaceAddress iaddr = ipv4->GetAddress(ipv4->GetInterfaceForDevice(device),0);
@@ -97,7 +99,7 @@ Wanderlust::StartApplication (void)
         InetSocketAddress local = InetSocketAddress (iaddr.GetLocal(), 6556);
         int result = socket->Bind(local);
         socket->BindToNetDevice(device);
-        NS_LOG_INFO ( "Binding to " << InetSocketAddress::ConvertFrom (local).GetIpv4 () << " result " << result << " bound to " << socket->GetBoundNetDevice());
+        NS_LOG_DEBUG ( "Binding to " << InetSocketAddress::ConvertFrom (local).GetIpv4 () << " result " << result << " bound to " << socket->GetBoundNetDevice());
         socket->SetAllowBroadcast(true);
         socket->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
         sockets.push_back(socket);
@@ -131,7 +133,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
     Address from;
     while ((packet = socket->RecvFrom (from)))
     {
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() << " received " << packet->GetSize () << " bytes from " <<
+        NS_LOG_INFO ("Received " << packet->GetSize () << " bytes from " <<
             InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
             InetSocketAddress::ConvertFrom (from).GetPort ());
         WanderlustHeader header;
@@ -226,7 +228,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                 peers[header.contents.src_pubkey].socket = socket;
 
                 // log our current error
-                NS_LOG_INFO("Node " << pubkey.getShortId() << " location error " << calculateLocationError(location));
+                NS_LOG_INFO("Location error " << calculateLocationError(location));
                 break;
             default:
                 break;
@@ -261,7 +263,7 @@ void Wanderlust::SendSwapRequest(void) {
             header.contents.hop_limit = 1;
             p->AddHeader(header);
 
-            NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a swaprequest packet " << header);
+            NS_LOG_INFO ("Sending " << header);
             peer.socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
 
             swapInProgress = true;
@@ -277,7 +279,7 @@ void Wanderlust::SendHello(void) {
 
     for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
         Ptr<Socket> socket = *it;
-        NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << "s node " << pubkey.getShortId() <<  " sends a hello packet");
+        NS_LOG_INFO ("Sending hello packet");
         Ptr<Packet> p = Create<Packet>();
         //m_txTrace (p); ??
         WanderlustHeader header;
