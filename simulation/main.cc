@@ -40,41 +40,34 @@ class MainObject {
 public:
     void run() {
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME));
-        LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_NODE));
+        //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_NODE));
 
         NS_LOG_INFO ("Creating Topology...");
+        const int ringSize = 10;
         NodeContainer nodes;
-        nodes.Create (4);
+        nodes.Create (ringSize);
 
         PointToPointHelper pointToPoint;
         pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1Mbps"));
         pointToPoint.SetChannelAttribute ("Delay", StringValue ("20ms"));
-
-        NetDeviceContainer d01 = pointToPoint.Install (nodes.Get(0), nodes.Get(1));
-        NetDeviceContainer d12 = pointToPoint.Install (nodes.Get(1), nodes.Get(2));
-        NetDeviceContainer d23 = pointToPoint.Install (nodes.Get(2), nodes.Get(3));
-        NetDeviceContainer d30 = pointToPoint.Install (nodes.Get(3), nodes.Get(0));
 
         InternetStackHelper stack;
         stack.Install (nodes);
 
         Ipv4AddressHelper address;
         address.SetBase ("10.0.0.0", "255.255.255.252");
-        address.Assign (d01);
-        address.NewNetwork();
-        address.Assign (d12);
-        address.NewNetwork();
-        address.Assign (d23);
-        address.NewNetwork();
-        address.Assign (d30);
-        address.NewNetwork();
+        for (int i=0;i<ringSize;i++) {
+            NetDeviceContainer c = pointToPoint.Install (nodes.Get(i), nodes.Get((i+1)%ringSize));
+            address.Assign(c);
+            address.NewNetwork();
+        }
 
         WanderlustHelper wanderlustServer;
 
         serverApps = wanderlustServer.Install(nodes);
-        Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
+        m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
         serverApps.Start (Seconds (1.0));
-        serverApps.Stop (Seconds (60.0));
+        serverApps.Stop (Seconds (120.0));
 
         Simulator::Run ();
 
@@ -99,8 +92,11 @@ public:
             }
         }
         NS_LOG_INFO("min/avg/max " << min << "/" << avg << "/" << max);
+        if (Simulator::Now().GetSeconds() < 120)
+            m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
     }
     ApplicationContainer serverApps;
+    EventId m_showLocationsEvent;
 };
 
 int main (int argc, char *argv[]) {

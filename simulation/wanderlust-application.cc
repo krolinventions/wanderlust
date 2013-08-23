@@ -143,10 +143,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                 if (swapInProgress)
                     break;
                 // check if we would improve
-                double oldLocationError = calculateLocationError(location);
-                double newLocationError = calculateLocationError(header.contents.src_location);
-                NS_LOG_INFO("Old location error " << oldLocationError << " new location error " << newLocationError);
-                if (oldLocationError > newLocationError) {
+                if (shouldSwapWith(header.contents.src_pubkey, header.contents.src_location)) {
                     NS_LOG_INFO("Detected potentially advantageous swap, responding");
                     Ptr<Packet> swapResponsePacket = Create<Packet>();
                     WanderlustHeader swapResponseHeader;
@@ -158,7 +155,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                     swapResponsePacket->AddHeader(swapResponseHeader);
                     socket->SendTo(swapResponsePacket,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
                     swapInProgress = true;
-                    swapTimeOut = Simulator::Now().GetSeconds() + 10;
+                    swapTimeOut = Simulator::Now().GetSeconds() + 5;
                 }
                 break;
             }
@@ -170,10 +167,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                     break;
                 }
 
-                double oldLocationError = calculateLocationError(location);
-                double newLocationError = calculateLocationError(header.contents.src_location);
-                NS_LOG_INFO("Old location error " << oldLocationError << " new location error " << newLocationError);
-                if (oldLocationError > newLocationError) {
+                if (shouldSwapWith(header.contents.src_pubkey, header.contents.src_location)) {
                     NS_LOG_INFO("SWAPPING on response");
                     Ptr<Packet> swapResponsePacket = Create<Packet>();
                     WanderlustHeader swapResponseHeader;
@@ -189,7 +183,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                     // perform the swap
                     location = header.contents.src_location;
                     swapInProgress = true;
-                    swapTimeOut = Simulator::Now().GetSeconds() + 10;
+                    swapTimeOut = Simulator::Now().GetSeconds() + 5;
                 }
                 break;
             }
@@ -201,10 +195,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                     break;
                 }
 
-                double oldLocationError = calculateLocationError(location);
-                double newLocationError = calculateLocationError(header.contents.src_location);
-                NS_LOG_INFO("Old location error " << oldLocationError << " new location error " << newLocationError);
-                if (oldLocationError > newLocationError) {
+                if (shouldSwapWith(header.contents.src_pubkey, header.contents.src_location)) {
                     NS_LOG_INFO("SWAPPING on confirmation");
                     // perform the swap
                     location = header.contents.src_location;
@@ -260,7 +251,7 @@ void Wanderlust::SendSwapRequest(void) {
             peer.socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
 
             swapInProgress = true;
-            swapTimeOut = Simulator::Now().GetSeconds() + 10;
+            swapTimeOut = Simulator::Now().GetSeconds() + 5;
             break;
         }
     }
@@ -270,7 +261,7 @@ void Wanderlust::SendSwapRequest(void) {
         swapInProgress = false;
     }
 
-    m_sendSwapRequestEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendSwapRequest, this);
+    m_sendSwapRequestEvent = Simulator::Schedule(Seconds(1+rand()%100/100.0), &Wanderlust::SendSwapRequest, this);
 }
 
 void Wanderlust::SendHello(void) {
@@ -291,14 +282,32 @@ void Wanderlust::SendHello(void) {
     m_sendHelloEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendHello, this);
 }
 
+double Wanderlust::calculateDistance(location_t &location1, location_t &location2) {
+    double error1 = std::abs(*(uint64_t*)location1.data/(double)UINT64_MAX - *(uint64_t*)location2.data/(double)UINT64_MAX);
+    double error2 = std::abs(std::abs(*(uint64_t*)location1.data/(double)UINT64_MAX - *(uint64_t*)location2.data/(double)UINT64_MAX) - 1);
+    return std::min(error1,error2);
+}
+
 double Wanderlust::calculateLocationError(location_t &location) {
     double error = 0;
     for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
-        double error1 = std::abs(*(uint64_t*)it->second.location.data/(double)UINT64_MAX - *(uint64_t*)location.data/(double)UINT64_MAX);
-        double error2 = std::abs(*(uint64_t*)it->second.location.data/(double)UINT64_MAX - *(uint64_t*)location.data/(double)UINT64_MAX - 1);
-        error += (error1<error2?error1:error2)/peers.size();
+        error += calculateDistance(location, it->second.location)/peers.size();
     }
     return error;
+}
+
+bool Wanderlust::shouldSwapWith(pubkey_t &peer_pubkey, location_t &peer_location) {
+    double currentError = calculateLocationError(location);
+    double newError = 0;
+    for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+        if (it->first != peer_pubkey) {
+            newError += calculateDistance(peer_location, it->second.location)/peers.size();
+        } else {
+            newError += calculateDistance(peer_location, location)/peers.size(); // the peer gets our location
+        }
+    }
+    NS_LOG_INFO ("old error " << currentError << " new error " << newError);
+    return newError < currentError;
 }
 
 } // Namespace ns3

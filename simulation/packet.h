@@ -34,6 +34,9 @@ struct pubkey_t {
         }
         return false;
     }
+    bool operator!=(const pubkey_t &other) const {
+        return (memcmp((void*)data, (void*)other.data, sizeof(data))!=0);
+    }
     uint16_t getShortId() const {
         return *(uint16_t*)data;
     }

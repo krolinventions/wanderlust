@@ -60,7 +60,9 @@ private:
   void SendHello(void);
 
   /// Lower is better
+  double calculateDistance(location_t &location1, location_t &location2);
   double calculateLocationError(location_t &location);
+  bool shouldSwapWith(pubkey_t &peer_pubkey, location_t &peer_location);
 
   std::vector< Ptr<Socket> > sockets;
   Address m_local;
