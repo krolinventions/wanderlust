@@ -64,18 +64,12 @@ public:
         WanderlustHelper wanderlustServer;
         applications = wanderlustServer.Install(nodes);
 
-        cout << "graph {" << endl;
         for (int i=0;i<nodeCount;i++) {
             // set positions
             Wanderlust &node = (Wanderlust&)*applications.Get(i);
             double x = rand()%areaSize;
             double y = rand()%areaSize;
             node.setPosition(x, y); // in m
-            cout << "    " << i << " [" << endl;
-            cout << "        pos=\"" << x/100 << "," << y/100 << "!\"" << endl;
-            cout << "        style=filled" << endl;
-            cout << "        fillcolor=\"" << node.getLocation() << " 0.5 0.9\"" << endl;
-            cout << "    ]" << endl;
         }
         for (int i=0;i<nodeCount;i++) {
             Wanderlust &node1 = (Wanderlust&)*applications.Get(i);
@@ -86,14 +80,14 @@ public:
                 double probablility = std::exp(-5E-6*distanceSquared);
                 //NS_LOG_INFO ("Node " << i << " and " << j << " probability " << probablilty);
                 if (rand()/(double)RAND_MAX < probablility) {
-                    cout << "    " << i << " -- " << j << endl;
+                    connections.push_back(pair<uint32_t,uint32_t>(i,j));
                     NetDeviceContainer c = pointToPoint.Install (nodes.Get(i), nodes.Get(j));
                     address.Assign(c);
                     address.NewNetwork();
                 }
             }
         }
-        cout << "}" << endl;
+        writeDotGraph();
 
         m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
         applications.Start (Seconds (1.0));
@@ -102,6 +96,8 @@ public:
         Simulator::Run ();
 
         showLocations();
+
+        writeDotGraph();
 
         Simulator::Destroy ();
     }
@@ -125,9 +121,30 @@ public:
         if (Simulator::Now().GetSeconds() < runTime)
             m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
     }
-    static const int runTime = 10000;
+    void writeDotGraph() {
+        cout << "graph {" << endl;
+        for (uint i=0;i<applications.GetN();i++) {
+            Wanderlust &node = (Wanderlust&)*applications.Get(i);
+            double x = node.getX();
+            double y = node.getY();
+            cout << "    " << i << " [" << endl;
+            cout << "        pos=\"" << x/100 << "," << y/100 << "!\"" << endl;
+            cout << "        style=filled" << endl;
+            cout << "        fillcolor=\"" << node.getLocation() << " 0.5 0.9\"" << endl;
+            cout << "    ]" << endl;
+        }
+        // connections
+        for (uint i=0;i<connections.size();i++) {
+            cout << "    " << connections[i].first << " -- " << connections[i].second << endl;
+        }
+
+        cout << "}" << endl;
+    }
+
+    static const int runTime = 3600;
     ApplicationContainer applications;
     EventId m_showLocationsEvent;
+    vector<pair<uint32_t, uint32_t> > connections;
 };
 
 int main (int argc, char *argv[]) {

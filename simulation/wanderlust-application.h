@@ -79,6 +79,8 @@ public:
     double calculateDistanceSquared(Wanderlust &other) {
         return std::pow(x-other.x,2)+std::pow(y-other.y,2);
     }
+    double getX() { return x; }
+    double getY() { return y; }
     uint16_t getShortId() {
         return pubkey.getShortId();
     }
@@ -92,7 +94,7 @@ private:
 
     void HandleRead (Ptr<Socket> socket);
     void SendSwapRequest(void);
-    void SendHello(void);
+    void SendScheduledHello(void);
 
     /// Lower is better
     double calculateDistance(Location &location1, Location &location2);
@@ -102,6 +104,7 @@ private:
     void processSwapRequest(WanderlustPeer &peer, WanderlustHeader& header);
     void processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header);
     void processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader& header);
+    void SendHello();
 
     std::vector< Ptr<Socket> > sockets;
     Address m_local;

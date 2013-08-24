@@ -104,7 +104,8 @@ Wanderlust::StartApplication (void)
     }
 
     m_sendSwapRequestEvent = Simulator::Schedule(Seconds (rand()%50/10.0+10), &Wanderlust::SendSwapRequest, this);
-    m_sendHelloEvent = Simulator::Schedule(Seconds (rand()%50/10.0), &Wanderlust::SendHello, this);
+    m_sendHelloEvent = Simulator::Schedule(Seconds (rand()%50/10.0), &Wanderlust::SendScheduledHello, this);
+    SendHello();
 }
 
 void 
@@ -128,7 +129,7 @@ void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& head
     SwapRoutingNextHop nextHop(&peer);
     swapRoutingTable[destination] = nextHop;
 
-    if (rand()%3 > 0) {
+    if (rand()%20 > 0) {
         // let's forward it!
         unsigned int choice = rand()%peers.size();
         for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
@@ -196,8 +197,9 @@ void Wanderlust::processSwapResponse(WanderlustPeer &peer, WanderlustHeader& hea
 
         // perform the swap
         location = header.contents.src_location;
+        SendHello();
         swapInProgress = true;
-        swapTimeOut = Simulator::Now().GetSeconds() + 5;
+        swapTimeOut = Simulator::Now().GetSeconds() + 2;
     } else {
         NS_LOG_INFO("swap won't lower our location error");
     }
@@ -215,6 +217,7 @@ void Wanderlust::processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader&
         NS_LOG_INFO("SWAPPING on confirmation");
         // perform the swap
         location = header.contents.src_location;
+        SendHello();
     } else {
         NS_LOG_INFO("swap won't lower our location error");
     }
@@ -325,7 +328,7 @@ void Wanderlust::SendSwapRequest(void) {
             peer.socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
 
             swapInProgress = true;
-            swapTimeOut = Simulator::Now().GetSeconds() + 5;
+            swapTimeOut = Simulator::Now().GetSeconds() + 2;
             break;
         }
     }
@@ -338,10 +341,9 @@ void Wanderlust::SendSwapRequest(void) {
     m_sendSwapRequestEvent = Simulator::Schedule(Seconds(1+rand()%100/100.0), &Wanderlust::SendSwapRequest, this);
 }
 
-void Wanderlust::SendHello(void) {
-    NS_LOG_FUNCTION(this);
-
-    for (std::vector< Ptr<Socket> >::iterator it=sockets.begin();it!=sockets.end();++it) {
+void Wanderlust::SendHello() {
+    for (std::vector<Ptr<Socket> >::iterator it = sockets.begin();
+            it != sockets.end(); ++it) {
         Ptr<Socket> socket = *it;
         NS_LOG_INFO ("Sending hello packet");
         Ptr<Packet> p = Create<Packet>();
@@ -351,9 +353,15 @@ void Wanderlust::SendHello(void) {
         header.contents.src_pubkey = pubkey;
         header.contents.src_location = location;
         p->AddHeader(header);
-        socket->SendTo(p,0,InetSocketAddress (Ipv4Address::GetBroadcast(), 6556));
+        socket->SendTo(p, 0,
+                InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
     }
-    m_sendHelloEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendHello, this);
+}
+
+void Wanderlust::SendScheduledHello(void) {
+    NS_LOG_FUNCTION(this);
+    SendHello();
+    m_sendHelloEvent = Simulator::Schedule(Seconds (60), &Wanderlust::SendScheduledHello, this);
 }
 
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
