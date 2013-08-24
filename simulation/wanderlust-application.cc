@@ -171,8 +171,6 @@ void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& head
                 WANDERLUST_TYPE_SWAP_RESPONSE;
         swapResponsePacket->AddHeader(swapResponseHeader);
         peer.socket->SendTo(swapResponsePacket, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
-        swapInProgress = true;
-        swapTimeOut = Simulator::Now().GetSeconds() + 5;
     }
 }
 
@@ -307,7 +305,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
 void Wanderlust::SendSwapRequest(void) {
     NS_LOG_FUNCTION(this);
     
-    if (!swapInProgress && peers.size() && swapTimeOut + 10 < Simulator::Now().GetSeconds()) {
+    if (!swapInProgress && peers.size()) {
         int target = rand()%peers.size();
         for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
             if (target > 0) {
