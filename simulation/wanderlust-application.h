@@ -34,46 +34,53 @@ namespace ns3 {
 
 class Socket;
 class Packet;
+class WanderlustHeader;
 
 class Wanderlust : public Application 
 {
 public:
-  static TypeId GetTypeId (void);
-  Wanderlust ();
-  virtual ~Wanderlust ();
-  double getLocation() {
+    static TypeId GetTypeId (void);
+    Wanderlust ();
+    virtual ~Wanderlust ();
+    double getLocation() {
       return *(uint64_t*)location.data/(double)UINT64_MAX;
-  }
-  double getLocationError() {
+    }
+    double getLocationError() {
       return calculateLocationError(location);
-  }
+    }
 protected:
-  virtual void DoDispose (void);
+    virtual void DoDispose (void);
 
 private:
 
-  virtual void StartApplication (void);
-  virtual void StopApplication (void);
+    virtual void StartApplication (void);
+    virtual void StopApplication (void);
 
-  void HandleRead (Ptr<Socket> socket);
-  void SendSwapRequest(void);
-  void SendHello(void);
+    void HandleRead (Ptr<Socket> socket);
+    void SendSwapRequest(void);
+    void SendHello(void);
 
-  /// Lower is better
-  double calculateDistance(location_t &location1, location_t &location2);
-  double calculateLocationError(location_t &location);
-  bool shouldSwapWith(pubkey_t &peer_pubkey, location_t &peer_location);
+    /// Lower is better
+    double calculateDistance(location_t &location1, location_t &location2);
+    double calculateLocationError(location_t &location);
+    bool shouldSwapWith(pubkey_t &peer_pubkey, location_t &peer_location);
 
-  std::vector< Ptr<Socket> > sockets;
-  Address m_local;
-  EventId m_sendSwapRequestEvent;
-  EventId m_sendHelloEvent;
+    void processSwapRequest(const Ptr<Socket>& socket, WanderlustHeader& header);
+    void processSwapResponse(const Ptr<Socket>& socket, WanderlustHeader& header);
+    void processSwapConfirmation(WanderlustHeader& header);
+    void processHello(const WanderlustHeader& header,
+            const Ptr<Socket>& socket);
 
-  std::map<pubkey_t, WanderlustPeer> peers;
-  pubkey_t pubkey;
-  location_t location;
-  bool swapInProgress;
-  double swapTimeOut;
+    std::vector< Ptr<Socket> > sockets;
+    Address m_local;
+    EventId m_sendSwapRequestEvent;
+    EventId m_sendHelloEvent;
+
+    std::map<pubkey_t, WanderlustPeer> peers;
+    pubkey_t pubkey;
+    location_t location;
+    bool swapInProgress;
+    double swapTimeOut;
 };
 
 } // namespace ns3
