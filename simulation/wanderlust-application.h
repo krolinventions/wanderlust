@@ -36,6 +36,30 @@ class Socket;
 class Packet;
 class WanderlustHeader;
 
+class SwapRoutingDestination {
+public:
+    SwapRoutingDestination() {
+        flowid = 0;
+    }
+    bool operator<(const SwapRoutingDestination &other) const {
+        if (flowid < other.flowid) return true;
+        if (flowid > other.flowid) return true;
+        return pubkey < other.pubkey;
+    }
+    Pubkey pubkey;
+    uint32_t flowid;
+};
+
+class SwapRoutingNextHop {
+public:
+    SwapRoutingNextHop() : gateway(NULL), created(0) {
+    }
+    SwapRoutingNextHop(WanderlustPeer *gateway) : gateway(gateway), created(0) {
+    }
+    WanderlustPeer *gateway;
+    uint64_t created;
+};
+
 class Wanderlust : public Application 
 {
 public:
@@ -61,26 +85,27 @@ private:
     void SendHello(void);
 
     /// Lower is better
-    double calculateDistance(location_t &location1, location_t &location2);
-    double calculateLocationError(location_t &location);
-    bool shouldSwapWith(pubkey_t &peer_pubkey, location_t &peer_location);
+    double calculateDistance(Location &location1, Location &location2);
+    double calculateLocationError(Location &location);
+    bool shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location);
 
-    void processSwapRequest(const Ptr<Socket>& socket, WanderlustHeader& header);
-    void processSwapResponse(const Ptr<Socket>& socket, WanderlustHeader& header);
-    void processSwapConfirmation(WanderlustHeader& header);
-    void processHello(const WanderlustHeader& header,
-            const Ptr<Socket>& socket);
+    void processSwapRequest(WanderlustPeer &peer, WanderlustHeader& header);
+    void processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header);
+    void processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader& header);
 
     std::vector< Ptr<Socket> > sockets;
     Address m_local;
     EventId m_sendSwapRequestEvent;
     EventId m_sendHelloEvent;
 
-    std::map<pubkey_t, WanderlustPeer> peers;
-    pubkey_t pubkey;
-    location_t location;
+    std::map<Pubkey, WanderlustPeer> peers;
+    std::map<Ptr<Socket>,WanderlustPeer*> socketToPeer;
+    Pubkey pubkey;
+    Location location;
     bool swapInProgress;
     double swapTimeOut;
+
+    std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
 };
 
 } // namespace ns3

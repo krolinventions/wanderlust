@@ -26,8 +26,12 @@
 
 class WanderlustPeer {
 public:
-    pubkey_t pubkey;
-    location_t location;
+    bool operator==(const WanderlustPeer &other) const {
+        return pubkey == other.pubkey;
+    }
+
+    Pubkey pubkey;
+    Location location;
     ns3::Ptr<ns3::Socket> socket;
 private:
 

@@ -25,17 +25,21 @@
 #define WANDERLUST_PACKET_H
 
 // Note: all data is stored in network byte order (big endian)
-struct pubkey_t {
+class Pubkey {
+public:
     uint8_t data[32];
-    bool operator<(const pubkey_t &other) const {
+    bool operator<(const Pubkey &other) const {
         for (size_t i=0;i<sizeof(data);i++) {
             if (data[i] < other.data[i]) return true;
             if (data[i] > other.data[i]) return false;
         }
         return false;
     }
-    bool operator!=(const pubkey_t &other) const {
-        return (memcmp((void*)data, (void*)other.data, sizeof(data))!=0);
+    bool operator!=(const Pubkey &other) const {
+        return memcmp((void*)data, (void*)other.data, sizeof(data))!=0;
+    }
+    bool operator==(const Pubkey &other) const {
+        return memcmp((void*)data, (void*)other.data, sizeof(data))==0;
     }
     uint16_t getShortId() const {
         return *(uint16_t*)data;
@@ -45,9 +49,10 @@ struct pubkey_t {
     }
 };
 
-struct location_t {
+class Location {
+public:
     uint8_t data[16];
-    bool operator!=(const location_t &other) const {
+    bool operator!=(const Location &other) const {
         return (memcmp((void*)data, (void*)other.data, sizeof(data))!=0);
     }
 };
@@ -65,10 +70,10 @@ typedef struct {
     uint8_t flow_id1;
     uint8_t flow_id2;
     uint8_t flow_id3;
-    pubkey_t src_pubkey;
-    pubkey_t dst_pubkey;
-    location_t src_location;
-    location_t dst_location;
+    Pubkey src_pubkey;
+    Pubkey dst_pubkey;
+    Location src_location;
+    Location dst_location;
     signature_t signature;
 } wanderlust_header_t;
 

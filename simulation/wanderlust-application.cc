@@ -121,10 +121,41 @@ Wanderlust::StopApplication ()
     Simulator::Cancel (m_sendHelloEvent);
 }
 
-void Wanderlust::processSwapRequest(const Ptr<Socket>& socket,
-        WanderlustHeader& header) {
-    if (swapInProgress)
+void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& header) {
+    // record in routing table
+    SwapRoutingDestination destination;
+    destination.pubkey = header.contents.src_pubkey;
+    SwapRoutingNextHop nextHop(&peer);
+    swapRoutingTable[destination] = nextHop;
+
+    if (rand()%3 > 0) {
+        // let's forward it!
+        unsigned int choice = rand()%(peers.size()-1);
+        for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+            if (it->second == peer) {
+                continue; // don't forward it back from where it came
+            }
+            if (choice > 0) {
+                choice--;
+                continue;
+            }
+            // we've picked a peer
+            Ptr<Packet> forwardedPacket = Create<Packet>();
+            forwardedPacket->RemoveAllByteTags();
+            forwardedPacket->RemoveAllPacketTags();
+            forwardedPacket->AddHeader(header);
+            NS_LOG_INFO("Forwarding swap request " << header);
+            it->second.socket->SendTo(forwardedPacket, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
+            break;
+        }
+
         return;
+    }
+
+    if (swapInProgress) {
+        NS_LOG_INFO("Ignoring swap request (in progress)");
+        return;
+    }
 
     // check if we would improve
     if (shouldSwapWith(header.contents.src_pubkey,
@@ -139,14 +170,13 @@ void Wanderlust::processSwapRequest(const Ptr<Socket>& socket,
         swapResponseHeader.contents.message_type =
                 WANDERLUST_TYPE_SWAP_RESPONSE;
         swapResponsePacket->AddHeader(swapResponseHeader);
-        socket->SendTo(swapResponsePacket, 0,
-                InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
+        peer.socket->SendTo(swapResponsePacket, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
         swapInProgress = true;
         swapTimeOut = Simulator::Now().GetSeconds() + 5;
     }
 }
 
-void Wanderlust::processSwapResponse(const Ptr<Socket>& socket, WanderlustHeader& header) {
+void Wanderlust::processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header) {
     // we've got a response, check if it would be a good idea to swap
     if (header.contents.dst_location != location) {
         NS_LOG_INFO("FIXME: Our location has changed in the meantime, discarding");
@@ -165,7 +195,7 @@ void Wanderlust::processSwapResponse(const Ptr<Socket>& socket, WanderlustHeader
         swapResponseHeader.contents.message_type =
                 WANDERLUST_TYPE_SWAP_CONFIRMATION;
         swapResponsePacket->AddHeader(swapResponseHeader);
-        socket->SendTo(swapResponsePacket, 0,
+        peer.socket->SendTo(swapResponsePacket, 0,
                 InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
         // FIXME: keep sending until we receive a confirmation
 
@@ -173,10 +203,12 @@ void Wanderlust::processSwapResponse(const Ptr<Socket>& socket, WanderlustHeader
         location = header.contents.src_location;
         swapInProgress = true;
         swapTimeOut = Simulator::Now().GetSeconds() + 5;
+    } else {
+        NS_LOG_INFO("swap won't lower our location error");
     }
 }
 
-void Wanderlust::processSwapConfirmation(WanderlustHeader& header) {
+void Wanderlust::processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader& header) {
     swapInProgress = false;
     // we've got a response, check if it would be a good idea to swap
     if (header.contents.dst_location != location) {
@@ -188,22 +220,9 @@ void Wanderlust::processSwapConfirmation(WanderlustHeader& header) {
         NS_LOG_INFO("SWAPPING on confirmation");
         // perform the swap
         location = header.contents.src_location;
+    } else {
+        NS_LOG_INFO("swap won't lower our location error");
     }
-}
-
-void Wanderlust::processHello(const WanderlustHeader& header, const Ptr<Socket>& socket) {
-    // we've received an awesome hello packet
-    // hello other node! want to be friends?
-    // well, let's add it to our list
-    if (peers.count(header.contents.src_pubkey) == 0) {
-        // we don't have it yet, create a new one
-        peers[header.contents.src_pubkey] = WanderlustPeer();
-    }
-    // update the location
-    peers[header.contents.src_pubkey].location = header.contents.src_location;
-    peers[header.contents.src_pubkey].socket = socket;
-    // log our current error
-    NS_LOG_INFO("current error " << calculateLocationError(location));
 }
 
 void 
@@ -220,29 +239,64 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
             InetSocketAddress::ConvertFrom (from).GetIpv4 () << " port " <<
             InetSocketAddress::ConvertFrom (from).GetPort ());
         WanderlustHeader header;
-        packet->RemoveHeader(header);
+        packet->PeekHeader(header);
         NS_LOG_INFO (header);
+        // update socket-peer mapping
+        if (header.contents.message_type == WANDERLUST_TYPE_HELLO) {
+            if (peers.count(header.contents.src_pubkey) == 0) {
+                // we don't have it yet, create a new one
+                peers[header.contents.src_pubkey] = WanderlustPeer();
+            }
+            // update the location
+            peers[header.contents.src_pubkey].location = header.contents.src_location;
+            peers[header.contents.src_pubkey].pubkey = header.contents.src_pubkey;
+            peers[header.contents.src_pubkey].socket = socket;
+            socketToPeer[socket] = &peers[header.contents.src_pubkey];
+            // log our current error
+            NS_LOG_INFO("current error " << calculateLocationError(location));
+            return; // done here
+        }
+        WanderlustPeer &peer = *socketToPeer[socket]; // FIXME: ugly
+        if ((header.contents.message_type == WANDERLUST_TYPE_SWAP_RESPONSE ||
+             header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION) &&
+             header.contents.dst_pubkey != pubkey) {
+            // add to the routing table just to be sure
+            SwapRoutingDestination srcDestination;
+            srcDestination.pubkey = header.contents.src_pubkey;
+            SwapRoutingNextHop nextHop(&peer);
+            swapRoutingTable[srcDestination] = nextHop;
+
+            // these swap messages are not for us, let's forward
+            SwapRoutingDestination destination;
+            destination.pubkey = header.contents.dst_pubkey;
+            if (swapRoutingTable.count(destination)) {
+                packet->RemoveAllByteTags();
+                packet->RemoveAllPacketTags();
+                swapRoutingTable[destination].gateway->socket->SendTo(packet, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
+                NS_LOG_INFO ("FORWARDING " << header);
+            } else {
+                NS_LOG_INFO ("ERROR, can't forward " << header << " no entry in routing table");
+            }
+            return;
+        }
         switch (header.contents.message_type) {
             case WANDERLUST_TYPE_DATA: break;
             case WANDERLUST_TYPE_SWAP_REQUEST: {
-                processSwapRequest(socket, header);
+                processSwapRequest(peer, header);
                 break;
             }
             case WANDERLUST_TYPE_SWAP_RESPONSE: {
-                processSwapResponse(socket, header);
+                processSwapResponse(peer, header);
                 break;
             }
             case WANDERLUST_TYPE_SWAP_CONFIRMATION: {
-                processSwapConfirmation(header);
+                processSwapConfirmation(peer, header);
                 break;
             }
             case WANDERLUST_TYPE_LOCATION_QUERY: break;
             case WANDERLUST_TYPE_LOCATION_ANSWER: break;
             case WANDERLUST_TYPE_HELLO:
-                // we've received an awesome hello packet
-                // hello other node! want to be friends?
-                // well, let's add it to our list
-                processHello(header, socket);
+                // already handled
                 break;
             default:
                 break;
@@ -253,9 +307,9 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
 void Wanderlust::SendSwapRequest(void) {
     NS_LOG_FUNCTION(this);
     
-    if (!swapInProgress && peers.size()) {
+    if (!swapInProgress && peers.size() && swapTimeOut + 10 < Simulator::Now().GetSeconds()) {
         int target = rand()%peers.size();
-        for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+        for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
             if (target > 0) {
                 target--;
                 continue;
@@ -307,24 +361,24 @@ void Wanderlust::SendHello(void) {
     m_sendHelloEvent = Simulator::Schedule(Seconds (1.), &Wanderlust::SendHello, this);
 }
 
-double Wanderlust::calculateDistance(location_t &location1, location_t &location2) {
+double Wanderlust::calculateDistance(Location &location1, Location &location2) {
     double error1 = std::abs(*(uint64_t*)location1.data/(double)UINT64_MAX - *(uint64_t*)location2.data/(double)UINT64_MAX);
     double error2 = std::abs(std::abs(*(uint64_t*)location1.data/(double)UINT64_MAX - *(uint64_t*)location2.data/(double)UINT64_MAX) - 1);
     return std::min(error1,error2);
 }
 
-double Wanderlust::calculateLocationError(location_t &location) {
+double Wanderlust::calculateLocationError(Location &location) {
     double error = 0;
-    for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+    for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
         error += calculateDistance(location, it->second.location)/peers.size();
     }
     return error;
 }
 
-bool Wanderlust::shouldSwapWith(pubkey_t &peer_pubkey, location_t &peer_location) {
+bool Wanderlust::shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location) {
     double currentError = calculateLocationError(location);
     double newError = 0;
-    for (std::map<pubkey_t,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+    for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
         if (it->first != peer_pubkey) {
             newError += calculateDistance(peer_location, it->second.location)/peers.size();
         } else {

@@ -67,7 +67,7 @@ public:
         serverApps = wanderlustServer.Install(nodes);
         m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
         serverApps.Start (Seconds (1.0));
-        serverApps.Stop (Seconds (120.0));
+        serverApps.Stop (Seconds (runTime));
 
         Simulator::Run ();
 
@@ -92,9 +92,10 @@ public:
             }
         }
         NS_LOG_INFO("min/avg/max " << min << "/" << avg << "/" << max);
-        if (Simulator::Now().GetSeconds() < 120)
+        if (Simulator::Now().GetSeconds() < runTime)
             m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
     }
+    static const int runTime = 400;
     ApplicationContainer serverApps;
     EventId m_showLocationsEvent;
 };
