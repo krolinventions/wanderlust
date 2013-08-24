@@ -33,6 +33,7 @@
 #include "wanderlust-application.h"
 
 using namespace ns3;
+using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 
@@ -42,10 +43,13 @@ public:
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME));
         //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_NODE));
 
+        // To generate the topology we first place all nodes on a two dimensional map
+        // the chance of an connection between two nodes is then inversely proportional to the distance
         NS_LOG_INFO ("Creating Topology...");
-        const int ringSize = 10;
+        const int nodeCount = 50;
+        const int areaSize = 2000;
         NodeContainer nodes;
-        nodes.Create (ringSize);
+        nodes.Create (nodeCount);
 
         PointToPointHelper pointToPoint;
         pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1Mbps"));
@@ -56,18 +60,44 @@ public:
 
         Ipv4AddressHelper address;
         address.SetBase ("10.0.0.0", "255.255.255.252");
-        for (int i=0;i<ringSize;i++) {
-            NetDeviceContainer c = pointToPoint.Install (nodes.Get(i), nodes.Get((i+1)%ringSize));
-            address.Assign(c);
-            address.NewNetwork();
-        }
 
         WanderlustHelper wanderlustServer;
+        applications = wanderlustServer.Install(nodes);
 
-        serverApps = wanderlustServer.Install(nodes);
+        cout << "graph {" << endl;
+        for (int i=0;i<nodeCount;i++) {
+            // set positions
+            Wanderlust &node = (Wanderlust&)*applications.Get(i);
+            double x = rand()%areaSize;
+            double y = rand()%areaSize;
+            node.setPosition(x, y); // in m
+            cout << "    " << i << " [" << endl;
+            cout << "        pos=\"" << x/100 << "," << y/100 << "!\"" << endl;
+            cout << "        style=filled" << endl;
+            cout << "        fillcolor=\"" << node.getLocation() << " 0.5 0.9\"" << endl;
+            cout << "    ]" << endl;
+        }
+        for (int i=0;i<nodeCount;i++) {
+            Wanderlust &node1 = (Wanderlust&)*applications.Get(i);
+            for (int j=i+1;j<nodeCount;j++) {
+                Wanderlust &node2 = (Wanderlust&)*applications.Get(j);
+                double distanceSquared = node1.calculateDistanceSquared(node2);
+                // 0m -> 100%, 1000m -> 5%
+                double probablility = std::exp(-5E-6*distanceSquared);
+                //NS_LOG_INFO ("Node " << i << " and " << j << " probability " << probablilty);
+                if (rand()/(double)RAND_MAX < probablility) {
+                    cout << "    " << i << " -- " << j << endl;
+                    NetDeviceContainer c = pointToPoint.Install (nodes.Get(i), nodes.Get(j));
+                    address.Assign(c);
+                    address.NewNetwork();
+                }
+            }
+        }
+        cout << "}" << endl;
+
         m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
-        serverApps.Start (Seconds (1.0));
-        serverApps.Stop (Seconds (runTime));
+        applications.Start (Seconds (1.0));
+        applications.Stop (Seconds (runTime));
 
         Simulator::Run ();
 
@@ -79,10 +109,10 @@ public:
         double min;
         double max;
         double avg;
-        for (unsigned int i=0;i<serverApps.GetN();i++) {
-            double error = ((Wanderlust&)*serverApps.Get(i)).getLocationError();
-            NS_LOG_INFO("Node " << i << " location " << ((Wanderlust&)*serverApps.Get(i)).getLocation() << " error " << error);
-            avg += error/serverApps.GetN();
+        for (unsigned int i=0;i<applications.GetN();i++) {
+            double error = ((Wanderlust&)*applications.Get(i)).getLocationError();
+            NS_LOG_INFO("Node " << i << " location " << ((Wanderlust&)*applications.Get(i)).getLocation() << " error " << error);
+            avg += error/applications.GetN();
             if (i==0) {
                 min = error;
                 max = error;
@@ -95,8 +125,8 @@ public:
         if (Simulator::Now().GetSeconds() < runTime)
             m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
     }
-    static const int runTime = 400;
-    ApplicationContainer serverApps;
+    static const int runTime = 10000;
+    ApplicationContainer applications;
     EventId m_showLocationsEvent;
 };
 

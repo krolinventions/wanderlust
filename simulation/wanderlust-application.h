@@ -72,6 +72,16 @@ public:
     double getLocationError() {
       return calculateLocationError(location);
     }
+    void setPosition(double x, double y) {
+        this->x = x;
+        this->y = y;
+    }
+    double calculateDistanceSquared(Wanderlust &other) {
+        return std::pow(x-other.x,2)+std::pow(y-other.y,2);
+    }
+    uint16_t getShortId() {
+        return pubkey.getShortId();
+    }
 protected:
     virtual void DoDispose (void);
 
@@ -106,6 +116,7 @@ private:
     double swapTimeOut;
 
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
+    double x,y;
 };
 
 } // namespace ns3

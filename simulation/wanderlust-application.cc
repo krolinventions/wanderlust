@@ -130,11 +130,8 @@ void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& head
 
     if (rand()%3 > 0) {
         // let's forward it!
-        unsigned int choice = rand()%(peers.size()-1);
+        unsigned int choice = rand()%peers.size();
         for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
-            if (it->second == peer) {
-                continue; // don't forward it back from where it came
-            }
             if (choice > 0) {
                 choice--;
                 continue;
