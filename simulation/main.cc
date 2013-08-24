@@ -141,7 +141,7 @@ public:
         cout << "}" << endl;
     }
 
-    static const int runTime = 3600;
+    static const int runTime = 3600*3;
     ApplicationContainer applications;
     EventId m_showLocationsEvent;
     vector<pair<uint32_t, uint32_t> > connections;

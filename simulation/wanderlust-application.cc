@@ -360,8 +360,14 @@ void Wanderlust::SendHello() {
 
 void Wanderlust::SendScheduledHello(void) {
     NS_LOG_FUNCTION(this);
+
+    if (!swapInProgress) {
+        // perturb the location a bit to keep things going and to increase network health
+        ((int32_t*)location.data)[1] += rand()%0x04000000 - 0x02000000;
+    }
+
     SendHello();
-    m_sendHelloEvent = Simulator::Schedule(Seconds (60), &Wanderlust::SendScheduledHello, this);
+    m_sendHelloEvent = Simulator::Schedule(Seconds (20 + (rand()%2000)/100.0), &Wanderlust::SendScheduledHello, this);
 }
 
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
