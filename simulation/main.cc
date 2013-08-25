@@ -40,14 +40,14 @@ NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 class MainObject {
 public:
     void run() {
-        LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME));
-        //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_NODE));
+        LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
+        LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_WARN|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL));
 
         // To generate the topology we first place all nodes on a two dimensional map
         // the chance of an connection between two nodes is then inversely proportional to the distance
         NS_LOG_INFO ("Creating Topology...");
-        const int nodeCount = 50;
-        const int areaSize = 2000;
+        const int nodeCount = 20;
+        const int areaSize = 285*std::sqrt(nodeCount);
         NodeContainer nodes;
         nodes.Create (nodeCount);
 
@@ -107,7 +107,7 @@ public:
         double avg;
         for (unsigned int i=0;i<applications.GetN();i++) {
             double error = ((Wanderlust&)*applications.Get(i)).getLocationError();
-            NS_LOG_INFO("Node " << i << " location " << ((Wanderlust&)*applications.Get(i)).getLocation() << " error " << error);
+            //NS_LOG_INFO("Node " << i << " location " << ((Wanderlust&)*applications.Get(i)).getLocation() << " error " << error);
             avg += error/applications.GetN();
             if (i==0) {
                 min = error;
@@ -131,6 +131,9 @@ public:
             cout << "        pos=\"" << x/100 << "," << y/100 << "!\"" << endl;
             cout << "        style=filled" << endl;
             cout << "        fillcolor=\"" << node.getLocation() << " 0.5 0.9\"" << endl;
+            //cout << "        color=\"" << node.getLocation2() << " 0.5 0.9\"" << endl;
+            cout << "        label=\"" << node.getLocationText() << "\"" << endl;
+            //cout << "        penwidth=10" << endl;
             cout << "    ]" << endl;
         }
         // connections
@@ -141,7 +144,7 @@ public:
         cout << "}" << endl;
     }
 
-    static const int runTime = 3600*3;
+    static const int runTime = 1000;
     ApplicationContainer applications;
     EventId m_showLocationsEvent;
     vector<pair<uint32_t, uint32_t> > connections;

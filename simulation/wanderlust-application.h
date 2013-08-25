@@ -32,6 +32,8 @@
 
 namespace ns3 {
 
+using namespace std;
+
 class Socket;
 class Packet;
 class WanderlustHeader;
@@ -68,6 +70,14 @@ public:
     virtual ~Wanderlust ();
     double getLocation() {
       return *(uint64_t*)location.data/(double)UINT64_MAX;
+    }
+    double getLocation2() {
+      return ((uint64_t*)location.data)[1]/(double)UINT64_MAX;
+    }
+    string getLocationText() {
+        ostringstream stream;
+        stream << getLocation();// << "," << (int)location.data[7+8];
+        return stream.str();
     }
     double getLocationError() {
       return calculateLocationError(location);
@@ -117,9 +127,11 @@ private:
     Location location;
     bool swapInProgress;
     double swapTimeOut;
+    Pubkey swapPartner;
 
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
     double x,y;
+    static const double swapTimeOutTime = 30;
 };
 
 } // namespace ns3
