@@ -414,16 +414,16 @@ void Wanderlust::SendScheduledHello(void) {
     }
 
     SendHello();
-    m_sendHelloEvent = Simulator::Schedule(Seconds (30 + (rand()%3000)/100.0), &Wanderlust::SendScheduledHello, this);
+    m_sendHelloEvent = Simulator::Schedule(Seconds (60 + (rand()%6000)/100.0), &Wanderlust::SendScheduledHello, this);
 }
 
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
     double error1a = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
     double error2a = std::abs(std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX) - 1);
-    //double error1b = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
-    //double error2b = std::abs(std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX) - 1);
-    //return std::sqrt(std::pow(std::min(error1a,error2a),2)+std::pow(std::min(error1b,error2b),2));
-    return std::sqrt(std::min(error1a,error2a));
+    double error1b = std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
+    double error2b = std::abs(std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX) - 1);
+    return std::pow(std::pow(std::min(error1a,error2a),2)+std::pow(std::min(error1b,error2b),2), 0.25);
+    //return std::sqrt(std::min(error1a,error2a));
 }
 
 double Wanderlust::calculateLocationError(Location &location) {

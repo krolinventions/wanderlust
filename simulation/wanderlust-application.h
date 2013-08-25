@@ -76,7 +76,7 @@ public:
     }
     string getLocationText() {
         ostringstream stream;
-        stream << getLocation();// << "," << (int)location.data[7+8];
+        stream << getLocation() << "\\n" << getLocation2();
         return stream.str();
     }
     double getLocationError() {
