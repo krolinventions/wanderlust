@@ -46,7 +46,7 @@ public:
         // To generate the topology we first place all nodes on a two dimensional map
         // the chance of an connection between two nodes is then inversely proportional to the distance
         NS_LOG_INFO ("Creating Topology...");
-        const int nodeCount = 20;
+        const int nodeCount = 50;
         const int areaSize = 285*std::sqrt(nodeCount);
         NodeContainer nodes;
         nodes.Create (nodeCount);
@@ -144,7 +144,7 @@ public:
         cout << "}" << endl;
     }
 
-    static const int runTime = 1000;
+    static const int runTime = 3600*3;
     ApplicationContainer applications;
     EventId m_showLocationsEvent;
     vector<pair<uint32_t, uint32_t> > connections;

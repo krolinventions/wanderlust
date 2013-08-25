@@ -408,12 +408,13 @@ void Wanderlust::SendScheduledHello(void) {
 
     if (!swapInProgress) {
         // perturb the location a bit to keep things going and to increase network health
-        //((int32_t*)location.data)[1] += rand()%0x04000000 - 0x02000000;
-        //((int32_t*)location.data)[3] += rand()%0x04000000 - 0x02000000;
+        // what would be reasonable? -> changing entire location in 1 hour
+        ((int32_t*)location.data)[1] += rand()%0x02000000 - 0x01000000;
+        ((int32_t*)location.data)[3] += rand()%0x02000000 - 0x01000000;
     }
 
     SendHello();
-    m_sendHelloEvent = Simulator::Schedule(Seconds (60 + (rand()%6000)/100.0), &Wanderlust::SendScheduledHello, this);
+    m_sendHelloEvent = Simulator::Schedule(Seconds (30 + (rand()%3000)/100.0), &Wanderlust::SendScheduledHello, this);
 }
 
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
