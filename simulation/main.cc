@@ -40,7 +40,7 @@ NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 class MainObject {
 public:
     void run() {
-        runTime = 3600*3;
+        runTime = 3600*10;
         nodeCount = 50;
         areaSize = 285*std::sqrt(nodeCount);
 
@@ -109,7 +109,7 @@ public:
     void showLocations() {
         double min;
         double max;
-        double avg;
+        double avg = 0;
         for (unsigned int i=0;i<applications.GetN();i++) {
             double error = ((Wanderlust&)*applications.Get(i)).getLocationError();
             //NS_LOG_INFO("Node " << i << " location " << ((Wanderlust&)*applications.Get(i)).getLocation() << " error " << error);
@@ -122,7 +122,7 @@ public:
                 max = std::max(error,max);
             }
         }
-        NS_LOG_INFO("min/avg/max " << min << "/" << avg << "/" << max);
+        cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << endl;
         if (Simulator::Now().GetSeconds() < runTime)
             m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
     }

@@ -29,17 +29,13 @@ class Pubkey {
 public:
     uint8_t data[32];
     bool operator<(const Pubkey &other) const {
-        for (size_t i=0;i<sizeof(data);i++) {
-            if (data[i] < other.data[i]) return true;
-            if (data[i] > other.data[i]) return false;
-        }
-        return false;
+        return memcmp(data, other.data, sizeof(data)) < 0;
     }
     bool operator!=(const Pubkey &other) const {
-        return memcmp((void*)data, (void*)other.data, sizeof(data))!=0;
+        return memcmp(data, other.data, sizeof(data))!=0;
     }
     bool operator==(const Pubkey &other) const {
-        return memcmp((void*)data, (void*)other.data, sizeof(data))==0;
+        return memcmp(data, other.data, sizeof(data))==0;
     }
     uint16_t getShortId() const {
         return *(uint16_t*)data;

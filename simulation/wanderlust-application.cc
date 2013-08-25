@@ -95,9 +95,9 @@ Wanderlust::StartApplication (void)
         TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
         Ptr<Socket> socket = Socket::CreateSocket (GetNode (), tid);
         InetSocketAddress local = InetSocketAddress (iaddr.GetLocal(), 6556);
-        int result = socket->Bind(local);
+        socket->Bind(local);
         socket->BindToNetDevice(device);
-        NS_LOG_INFO ( "Binding to " << InetSocketAddress::ConvertFrom (local).GetIpv4 () << " result " << result << " bound to " << socket->GetBoundNetDevice());
+        //NS_LOG_INFO ( "Binding to " << InetSocketAddress::ConvertFrom (local).GetIpv4 () << " result " << result << " bound to " << socket->GetBoundNetDevice());
         socket->SetAllowBroadcast(true);
         socket->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
         sockets.push_back(socket);
