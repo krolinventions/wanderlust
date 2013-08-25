@@ -45,7 +45,7 @@ public:
         areaSize = 285*std::sqrt(nodeCount);
 
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
-        LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_WARN|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));
+        //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_WARN|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));
 
         // To generate the topology we first place all nodes on a two dimensional map
         // the chance of an connection between two nodes is then inversely proportional to the distance
@@ -110,8 +110,11 @@ public:
         double min;
         double max;
         double avg = 0;
+        uint32_t pings = 0;
+        uint32_t pongs = 0;
         for (unsigned int i=0;i<applications.GetN();i++) {
-            double error = ((Wanderlust&)*applications.Get(i)).getLocationError();
+            Wanderlust &node = (Wanderlust&)*applications.Get(i);
+            double error = node.getLocationError();
             //NS_LOG_INFO("Node " << i << " location " << ((Wanderlust&)*applications.Get(i)).getLocation() << " error " << error);
             avg += error/applications.GetN();
             if (i==0) {
@@ -121,8 +124,11 @@ public:
                 min = std::min(error,min);
                 max = std::max(error,max);
             }
+            pings += node.getSentPingCount();
+            pongs += node.getReceivedPongCount();
+            node.resetStats();
         }
-        cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << endl;
+        cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << " ping/pong " << pings << "/" << pongs << " " << 100*pongs/pings << "%" << endl;
         if (Simulator::Now().GetSeconds() < runTime)
             m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
     }

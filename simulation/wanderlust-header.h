@@ -51,6 +51,8 @@ public:
             case WANDERLUST_TYPE_LOCATION_QUERY: os << "LOCATION QUERY"; break;
             case WANDERLUST_TYPE_LOCATION_ANSWER: os << "LOCATION ANSWER"; break;
             case WANDERLUST_TYPE_HELLO: os << "HELLO"; break;
+            case WANDERLUST_TYPE_PING: os << "PING"; break;
+            case WANDERLUST_TYPE_PONG: os << "PONG"; break;
             default: os << "UNKNOWN";
         }
 

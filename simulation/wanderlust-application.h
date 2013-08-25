@@ -94,6 +94,16 @@ public:
     uint16_t getShortId() {
         return pubkey.getShortId();
     }
+    uint32_t getSentPingCount() {
+        return sentPingCount;
+    }
+    uint32_t getReceivedPongCount() {
+        return receivedPongCount;
+    }
+    void resetStats() {
+        sentPingCount = 0;
+        receivedPongCount = 0;
+    }
 protected:
     virtual void DoDispose (void);
 
@@ -105,6 +115,7 @@ private:
     void HandleRead (Ptr<Socket> socket);
     void SendSwapRequest(void);
     void SendScheduledHello(void);
+    void SendPing(void);
 
     /// Lower is better
     double calculateDistance(Location &location1, Location &location2);
@@ -115,12 +126,19 @@ private:
     void processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header);
     void processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader& header);
     void processSwapRefusal(WanderlustPeer &peer, WanderlustHeader& header);
+    void processPing(WanderlustPeer &peer, WanderlustHeader& header);
+    void processPong(WanderlustPeer &peer, WanderlustHeader& header);
     void SendHello();
+
+    void snoopLocation(WanderlustHeader& header);
+
+    void route(Ptr<Packet> packet, WanderlustHeader& header);
 
     std::vector< Ptr<Socket> > sockets;
     Address m_local;
     EventId m_sendSwapRequestEvent;
     EventId m_sendHelloEvent;
+    EventId m_sendPingEvent;
 
     std::map<Pubkey, WanderlustPeer> peers;
     std::map<Ptr<Socket>,WanderlustPeer*> socketToPeer;
@@ -133,6 +151,10 @@ private:
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
     double x,y;
     static const double swapTimeOutTime = 60;
+
+    map<Pubkey, Location> locationStore;
+    uint32_t sentPingCount;
+    uint32_t receivedPongCount;
 };
 
 } // namespace ns3

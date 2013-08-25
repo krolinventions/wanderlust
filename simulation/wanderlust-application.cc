@@ -63,6 +63,8 @@ Wanderlust::Wanderlust ()
   fillWithRandomData(location.data, sizeof(location));
   swapInProgress = false;
   swapTimeOut = Simulator::Now().GetSeconds();
+  sentPingCount = 0;
+  receivedPongCount = 0;
 }
 
 Wanderlust::~Wanderlust()
@@ -105,6 +107,7 @@ Wanderlust::StartApplication (void)
 
     m_sendSwapRequestEvent = Simulator::Schedule(Seconds (rand()%50/10.0+10), &Wanderlust::SendSwapRequest, this);
     m_sendHelloEvent = Simulator::Schedule(Seconds (rand()%50/10.0), &Wanderlust::SendScheduledHello, this);
+    m_sendPingEvent = Simulator::Schedule(Seconds (rand()%100/10.0+5), &Wanderlust::SendPing, this);
     SendHello();
 }
 
@@ -120,6 +123,7 @@ Wanderlust::StopApplication ()
     }
     Simulator::Cancel (m_sendSwapRequestEvent);
     Simulator::Cancel (m_sendHelloEvent);
+    Simulator::Cancel (m_sendPingEvent);
 }
 
 void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& header) {
@@ -282,6 +286,10 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
         WanderlustHeader header;
         packet->PeekHeader(header);
         NS_LOG_INFO (header);
+
+        // snoop for pubkey->location mappings
+        snoopLocation(header);
+
         // update socket-peer mapping
         if (header.contents.message_type == WANDERLUST_TYPE_HELLO) {
             if (peers.count(header.contents.src_pubkey) == 0) {
@@ -298,53 +306,72 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
             return; // done here
         }
         WanderlustPeer &peer = *socketToPeer[socket]; // FIXME: ugly
-        if ((header.contents.message_type == WANDERLUST_TYPE_SWAP_RESPONSE ||
-             header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION ||
-             header.contents.message_type == WANDERLUST_TYPE_SWAP_REFUSAL) &&
-             header.contents.dst_pubkey != pubkey) {
+
+        if (header.contents.message_type == WANDERLUST_TYPE_SWAP_REQUEST) {
+            processSwapRequest(peer, header);
+            return;
+        }
+
+        if (header.contents.message_type == WANDERLUST_TYPE_SWAP_RESPONSE ||
+            header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION ||
+            header.contents.message_type == WANDERLUST_TYPE_SWAP_REFUSAL) {
             // add to the routing table just to be sure
             SwapRoutingDestination srcDestination;
             srcDestination.pubkey = header.contents.src_pubkey;
             SwapRoutingNextHop nextHop(&peer);
             swapRoutingTable[srcDestination] = nextHop;
 
-            // these swap messages are not for us, let's forward
-            SwapRoutingDestination destination;
-            destination.pubkey = header.contents.dst_pubkey;
-            if (swapRoutingTable.count(destination)) {
-                packet->RemoveAllByteTags();
-                packet->RemoveAllPacketTags();
-                swapRoutingTable[destination].gateway->socket->SendTo(packet, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
-                NS_LOG_INFO ("FORWARDING " << header);
+            if (header.contents.dst_pubkey == pubkey) {
+                switch (header.contents.message_type) {
+                    case WANDERLUST_TYPE_SWAP_RESPONSE:
+                        processSwapResponse(peer, header);
+                        break;
+                    case WANDERLUST_TYPE_SWAP_CONFIRMATION:
+                        processSwapConfirmation(peer, header);
+                        break;
+                    case WANDERLUST_TYPE_SWAP_REFUSAL:
+                        processSwapRefusal(peer, header);
+                        break;
+                    default:
+                        NS_LOG_WARN("Unknown message type " << header.contents.message_type);
+                        break;
+                }
             } else {
-                NS_LOG_WARN ("can't forward " << header << " no entry in routing table");
+                // these swap messages are not for us, let's forward
+                SwapRoutingDestination destination;
+                destination.pubkey = header.contents.dst_pubkey;
+                if (swapRoutingTable.count(destination)) {
+                    packet->RemoveAllByteTags();
+                    packet->RemoveAllPacketTags();
+                    swapRoutingTable[destination].gateway->socket->SendTo(packet, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
+                    NS_LOG_INFO ("FORWARDING " << header);
+                } else {
+                    NS_LOG_WARN ("can't forward " << header << " no entry in routing table");
+                }
             }
+            return;
+        }
+        if (header.contents.dst_pubkey != pubkey) {
+            packet->RemoveAllByteTags();
+            packet->RemoveAllPacketTags();
+            route(packet, header);
             return;
         }
         switch (header.contents.message_type) {
             case WANDERLUST_TYPE_DATA: break;
-            case WANDERLUST_TYPE_SWAP_REQUEST: {
-                processSwapRequest(peer, header);
-                break;
-            }
-            case WANDERLUST_TYPE_SWAP_RESPONSE: {
-                processSwapResponse(peer, header);
-                break;
-            }
-            case WANDERLUST_TYPE_SWAP_CONFIRMATION: {
-                processSwapConfirmation(peer, header);
-                break;
-            }
-            case WANDERLUST_TYPE_SWAP_REFUSAL: {
-                processSwapRefusal(peer, header);
-                break;
-            }
             case WANDERLUST_TYPE_LOCATION_QUERY: break;
             case WANDERLUST_TYPE_LOCATION_ANSWER: break;
             case WANDERLUST_TYPE_HELLO:
                 // already handled
                 break;
+            case WANDERLUST_TYPE_PING:
+                processPing(peer, header);
+                break;
+            case WANDERLUST_TYPE_PONG:
+                processPong(peer, header);
+                break;
             default:
+                NS_LOG_WARN("Unknown message type " << header.contents.message_type);
                 break;
         }
     }
@@ -447,5 +474,83 @@ bool Wanderlust::shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location) {
     NS_LOG_INFO ("old error " << currentError << " new error " << newError);
     return newError <= currentError; // swap if the same error, makes sure swapping in long chains works
 }
+
+void Wanderlust::snoopLocation(WanderlustHeader& header) {
+    if (header.contents.src_pubkey == pubkey) return; // received a message from ourself?
+    // store the source location, except if it's a swap response/confirmation
+    if (header.contents.message_type == WANDERLUST_TYPE_SWAP_RESPONSE ||
+        header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION) {
+        locationStore[header.contents.src_pubkey] = header.contents.dst_location;
+    } else {
+        locationStore[header.contents.src_pubkey] = header.contents.src_location;
+    }
+}
+
+void Wanderlust::SendPing(void) {
+    if (locationStore.size() > 0) {
+        // select a peer:
+        map<Pubkey,Location>::iterator item = locationStore.begin();
+        std::advance( item, rand()%locationStore.size());
+
+        Ptr<Packet> packet = Create<Packet>();
+        WanderlustHeader header;
+        header.contents.src_location = location;
+        header.contents.src_pubkey = pubkey;
+        header.contents.dst_location = item->second;
+        header.contents.dst_pubkey = item->first;
+        header.contents.message_type = WANDERLUST_TYPE_PING;
+        packet->AddHeader(header);
+        route(packet, header);
+        NS_LOG_DEBUG("sending ping " << sentPingCount << "/" << receivedPongCount << " " << locationStore.size() << " nodes in locationstore");
+        sentPingCount++;
+    }
+    m_sendPingEvent = Simulator::Schedule(Seconds (5 + (rand()%1000)/100.0), &Wanderlust::SendPing, this);
+}
+
+/// Please make sure the header is already attached to the packet
+void Wanderlust::route(Ptr<Packet> packet, WanderlustHeader& header) {
+    if (peers.size() == 0) {
+        NS_LOG_WARN("No peers so cannot route");
+        return;
+    }
+    // find the closest peer FIXME: precompute, perhaps using sectors
+    WanderlustPeer *best = NULL;
+    double bestDistance = 0;
+    for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+        double thisDistance = calculateDistance(header.contents.dst_location, it->second.location);
+        if (best == NULL || thisDistance < bestDistance) {
+            bestDistance = thisDistance;
+            best = &it->second;
+        }
+    }
+    if (bestDistance > calculateDistance(header.contents.dst_location, location)) {
+        // it's farther away than us, we should do local routing
+        // drop it for now
+        NS_LOG_WARN("Dead end for " << header);
+        return;
+    }
+    // and off we go!
+    best->socket->SendTo(packet, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
+}
+
+void Wanderlust::processPing(WanderlustPeer &peer, WanderlustHeader& header) {
+    NS_LOG_DEBUG("received ping");
+    // well, let's send something back!
+    Ptr<Packet> packet = Create<Packet>();
+    WanderlustHeader pongHeader;
+    pongHeader.contents.src_location = location;
+    pongHeader.contents.src_pubkey = pubkey;
+    pongHeader.contents.dst_location = header.contents.src_location;
+    pongHeader.contents.dst_pubkey = header.contents.src_pubkey;
+    pongHeader.contents.message_type = WANDERLUST_TYPE_PONG;
+    packet->AddHeader(pongHeader);
+    route(packet, pongHeader);
+}
+
+void Wanderlust::processPong(WanderlustPeer &peer, WanderlustHeader& header) {
+    receivedPongCount++;
+    NS_LOG_DEBUG("received pong " << sentPingCount << "/" << receivedPongCount);
+}
+
 
 } // Namespace ns3
