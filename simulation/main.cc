@@ -41,7 +41,7 @@ class MainObject {
 public:
     void run() {
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
-        LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_WARN|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL));
+        LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_WARN|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));
 
         // To generate the topology we first place all nodes on a two dimensional map
         // the chance of an connection between two nodes is then inversely proportional to the distance
@@ -52,7 +52,7 @@ public:
         nodes.Create (nodeCount);
 
         PointToPointHelper pointToPoint;
-        pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("1Mbps"));
+        pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
         pointToPoint.SetChannelAttribute ("Delay", StringValue ("20ms"));
 
         InternetStackHelper stack;

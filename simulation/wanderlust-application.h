@@ -114,6 +114,7 @@ private:
     void processSwapRequest(WanderlustPeer &peer, WanderlustHeader& header);
     void processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header);
     void processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader& header);
+    void processSwapRefusal(WanderlustPeer &peer, WanderlustHeader& header);
     void SendHello();
 
     std::vector< Ptr<Socket> > sockets;
@@ -131,7 +132,7 @@ private:
 
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
     double x,y;
-    static const double swapTimeOutTime = 30;
+    static const double swapTimeOutTime = 60;
 };
 
 } // namespace ns3

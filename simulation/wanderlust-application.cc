@@ -87,7 +87,7 @@ Wanderlust::StartApplication (void)
     for (unsigned int i=0;i<GetNode()->GetNDevices();i++) {
         Ptr<NetDevice> device = GetNode()->GetDevice(i);
         if (!device->GetChannel()) continue; // it's not connected
-        NS_LOG_DEBUG ( "Found network device " << device->GetAddress() << " channel " << device->GetChannel());
+        NS_LOG_INFO ( "Found network device " << device->GetAddress() << " channel " << device->GetChannel());
         
         Ptr<Ipv4> ipv4 = GetNode()->GetObject<Ipv4>();
         Ipv4InterfaceAddress iaddr = ipv4->GetAddress(ipv4->GetInterfaceForDevice(device),0);
@@ -97,7 +97,7 @@ Wanderlust::StartApplication (void)
         InetSocketAddress local = InetSocketAddress (iaddr.GetLocal(), 6556);
         int result = socket->Bind(local);
         socket->BindToNetDevice(device);
-        NS_LOG_DEBUG ( "Binding to " << InetSocketAddress::ConvertFrom (local).GetIpv4 () << " result " << result << " bound to " << socket->GetBoundNetDevice());
+        NS_LOG_INFO ( "Binding to " << InetSocketAddress::ConvertFrom (local).GetIpv4 () << " result " << result << " bound to " << socket->GetBoundNetDevice());
         socket->SetAllowBroadcast(true);
         socket->SetRecvCallback (MakeCallback (&Wanderlust::HandleRead, this));
         sockets.push_back(socket);
@@ -158,7 +158,7 @@ void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& head
     // check if we would improve
     if (shouldSwapWith(header.contents.src_pubkey,
             header.contents.src_location)) {
-        NS_LOG_INFO("Detected potentially advantageous swap, responding");
+        NS_LOG_DEBUG("Detected potentially advantageous swap, responding");
         Ptr<Packet> swapResponsePacket = Create<Packet>();
         WanderlustHeader swapResponseHeader;
         swapResponseHeader.contents.src_location = location;
@@ -179,16 +179,16 @@ void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& head
 void Wanderlust::processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header) {
     // we've got a response, check if it would be a good idea to swap
     if (header.contents.dst_location != location) {
-        NS_LOG_INFO("SwapResponse: Our location has changed in the meantime, discarding");
-        return;
+        NS_LOG_DEBUG("SwapResponse: Our location has changed in the meantime, discarding");
+        goto send_refusal;
     }
     if (swapInProgress) {
-        NS_LOG_INFO("Swap already in progress");
-        return;
+        NS_LOG_DEBUG("Swap already in progress");
+        goto send_refusal;
     }
     if (shouldSwapWith(header.contents.src_pubkey,
             header.contents.src_location)) {
-        NS_LOG_INFO("SWAPPING on response");
+        NS_LOG_DEBUG("SWAPPING on response");
         Ptr<Packet> swapResponsePacket = Create<Packet>();
         WanderlustHeader swapResponseHeader;
         swapResponseHeader.contents.src_location = location;
@@ -208,9 +208,21 @@ void Wanderlust::processSwapResponse(WanderlustPeer &peer, WanderlustHeader& hea
         swapInProgress = true;
         swapTimeOut = Simulator::Now().GetSeconds() + swapTimeOutTime;
         swapPartner = header.contents.src_pubkey;
+        return;
     } else {
-        NS_LOG_INFO("swap won't lower our location error");
+        NS_LOG_DEBUG("swap won't lower our location error");
     }
+
+send_refusal:
+    Ptr<Packet> swapResponsePacket = Create<Packet>();
+    WanderlustHeader swapResponseHeader;
+    swapResponseHeader.contents.src_location = location;
+    swapResponseHeader.contents.src_pubkey = pubkey;
+    swapResponseHeader.contents.dst_location = header.contents.src_location;
+    swapResponseHeader.contents.dst_pubkey = header.contents.src_pubkey;
+    swapResponseHeader.contents.message_type = WANDERLUST_TYPE_SWAP_REFUSAL;
+    swapResponsePacket->AddHeader(swapResponseHeader);
+    peer.socket->SendTo(swapResponsePacket, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
 }
 
 void Wanderlust::processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader& header) {
@@ -233,12 +245,25 @@ void Wanderlust::processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader&
     if (!shouldSwapWith(header.contents.src_pubkey,
             header.contents.src_location)) {
         // bad luck, we should go ahead anyway
-        NS_LOG_INFO("Confirmed swap won't lower our location error, still going ahead");
+        NS_LOG_DEBUG("Confirmed swap won't lower our location error, still going ahead");
     }
-    NS_LOG_INFO("SWAPPING on confirmation");
+    NS_LOG_DEBUG("SWAPPING on confirmation");
     // perform the swap
     location = header.contents.src_location;
     SendHello();
+}
+
+void Wanderlust::processSwapRefusal(WanderlustPeer &peer, WanderlustHeader& header) {
+    if (!swapInProgress) {
+        NS_LOG_WARN("did not expect swap refusal, no swap in progress");
+        return; // we're not swapping, why did we get this packet?
+    }
+    if (header.contents.src_pubkey != swapPartner) {
+        NS_LOG_WARN("this is not the node we're currently swapping with");
+        return;
+    }
+    NS_LOG_DEBUG("ok, swap refused");
+    swapInProgress = false;
 }
 
 void 
@@ -274,7 +299,8 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
         }
         WanderlustPeer &peer = *socketToPeer[socket]; // FIXME: ugly
         if ((header.contents.message_type == WANDERLUST_TYPE_SWAP_RESPONSE ||
-             header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION) &&
+             header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION ||
+             header.contents.message_type == WANDERLUST_TYPE_SWAP_REFUSAL) &&
              header.contents.dst_pubkey != pubkey) {
             // add to the routing table just to be sure
             SwapRoutingDestination srcDestination;
@@ -291,7 +317,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
                 swapRoutingTable[destination].gateway->socket->SendTo(packet, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
                 NS_LOG_INFO ("FORWARDING " << header);
             } else {
-                NS_LOG_INFO ("ERROR, can't forward " << header << " no entry in routing table");
+                NS_LOG_WARN ("can't forward " << header << " no entry in routing table");
             }
             return;
         }
@@ -307,6 +333,10 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
             }
             case WANDERLUST_TYPE_SWAP_CONFIRMATION: {
                 processSwapConfirmation(peer, header);
+                break;
+            }
+            case WANDERLUST_TYPE_SWAP_REFUSAL: {
+                processSwapRefusal(peer, header);
                 break;
             }
             case WANDERLUST_TYPE_LOCATION_QUERY: break;
@@ -349,7 +379,7 @@ void Wanderlust::SendSwapRequest(void) {
     }
     // do this afterwards so we have some time in which to receive those messages
     if (swapInProgress && swapTimeOut < Simulator::Now().GetSeconds()) {
-        NS_LOG_INFO("Swap timeout!");
+        NS_LOG_WARN("Swap timeout!");
         swapInProgress = false;
     }
 
