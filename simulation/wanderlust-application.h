@@ -20,6 +20,7 @@
 #ifndef WANSERLUST_APPLICATION_H
 #define WANSERLUST_APPLICATION_H
 
+#define UINT32_MAX (0xffffffff)
 #define UINT64_MAX (18446744073709551615ULL)
 
 #include "ns3/application.h"
@@ -151,7 +152,8 @@ private:
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
     double x,y;
     static const double swapTimeOutTime = 60;
-    static const int dimensions = 64;
+    static const int dimensions = -20;
+    static const bool swap = true;
 
     map<Pubkey, Location> locationStore;
     uint32_t sentPingCount;

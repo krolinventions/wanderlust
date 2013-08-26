@@ -40,8 +40,8 @@ NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 class MainObject {
 public:
     void run() {
-        runTime = 3600*80;
-        nodeCount = 200;
+        runTime = 1000;
+        nodeCount = 20;
         areaSize = 285*std::sqrt(nodeCount);
 
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
@@ -93,7 +93,7 @@ public:
         writeDotGraph();
         writeDotGraph2D();
 
-        m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
+        m_showLocationsEvent = Simulator::Schedule(Seconds (60), &MainObject::showLocations, this);
         applications.Start (Seconds (1.0));
         applications.Stop (Seconds (runTime));
 
@@ -130,7 +130,7 @@ public:
         }
         cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << " ping/pong " << pings << "/" << pongs << " " << 100.0*pongs/pings << "%" << endl;
         if (Simulator::Now().GetSeconds() < runTime)
-            m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
+            m_showLocationsEvent = Simulator::Schedule(Seconds (60), &MainObject::showLocations, this);
     }
     void writeDotGraph() {
         cout << "graph {" << endl;

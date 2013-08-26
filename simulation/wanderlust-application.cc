@@ -436,8 +436,8 @@ void Wanderlust::SendScheduledHello(void) {
     if (!swapInProgress) {
         // perturb the location a bit to keep things going and to increase network health
         // what would be reasonable? -> changing entire location in 1 hour
-        ((int32_t*)location.data)[1] += rand()%0x02000000 - 0x01000000;
-        ((int32_t*)location.data)[3] += rand()%0x02000000 - 0x01000000;
+        //((int32_t*)location.data)[1] += rand()%0x02000000 - 0x01000000;
+        //((int32_t*)location.data)[3] += rand()%0x02000000 - 0x01000000;
     }
 
     SendHello();
@@ -445,7 +445,8 @@ void Wanderlust::SendScheduledHello(void) {
 }
 
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
-    if (dimensions <= 2) {
+    if (dimensions == 0) return 0;
+    if (dimensions == 1 || dimensions == 2) {
         double error1a = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
         double error2a = std::abs(std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX) - 1);
         if (dimensions == 2) {
@@ -455,8 +456,52 @@ double Wanderlust::calculateDistance(Location &location1, Location &location2) {
         }
         return std::sqrt(std::min(error1a,error2a));
     }
-    if (dimensions == 64) {
+    if (dimensions == -1) {
+        // 1D in only one direction
+        double error = ((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX;
+        if (error < 0) return 1;
+        return error;
+    }
+    if (dimensions == -10) {
+        // 1D linear
+        return std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
+    }
+    if (dimensions == -20) {
+        // 2D linear
+        double error1a = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
+        double error1b = std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
+        return std::pow(std::pow(error1a,2)+std::pow(error1b,2), 0.25);
+    }
+    if (dimensions >= 3 && dimensions <=4 ) {
+        double acc = 0;
+        for (int i=0;i<dimensions;i++) {
+            double error1 = std::abs(((uint32_t*)location1.data)[i]/(double)UINT32_MAX - ((uint32_t*)location2.data)[i]/(double)UINT32_MAX);
+            double error2 = std::abs(std::abs(((uint32_t*)location1.data)[i]/(double)UINT32_MAX - ((uint32_t*)location2.data)[i]/(double)UINT32_MAX) - 1);
+            acc += std::pow(std::min(error1,error2),2);
+        }
+        return std::pow(acc, 0.25);
+    }
+    if (dimensions == 64 || dimensions == 128) {
+        uint64_t changedBits = ((uint64_t*)location1.data)[0] ^ ((uint64_t*)location2.data)[0];
+        size_t count = 0;
 
+        while (changedBits) {
+            if (changedBits & 1) count++;
+            changedBits >>= 1;
+        }
+        if (dimensions == 64)
+            return count/64.0;
+
+        changedBits = ((uint64_t*)location1.data)[1] ^ ((uint64_t*)location2.data)[1];
+        while (changedBits) {
+            if (changedBits & 1) count++;
+            changedBits >>= 1;
+        }
+        return count/128.0;
+    }
+    if (dimensions == -64) {
+        // kademlia
+        return std::log((((uint64_t*)location1.data)[0] ^ ((uint64_t*)location2.data)[0]))/std::log(UINT64_MAX);
     }
     cerr << "Unsupported number of dimensions " << dimensions;
     exit(1); // bye!
@@ -471,6 +516,8 @@ double Wanderlust::calculateLocationError(Location &location) {
 }
 
 bool Wanderlust::shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location) {
+    if (!swap) return false; // swapping is disabled
+
     double currentError = calculateLocationError(location);
     double newError = 0;
     for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
