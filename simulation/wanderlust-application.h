@@ -121,7 +121,9 @@ private:
     /// Lower is better
     double calculateDistance(Location &location1, Location &location2);
     double calculateLocationError(Location &location);
-    bool shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location);
+    bool shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location, uint8_t &swapBits, bool setSwapBits);
+    void swapByBits(Location &a, Location &b, uint8_t swapBits);
+    double calculateNewError(Pubkey &peer_pubkey, Location &myNewLocation, Location &peerNewLocation);
 
     void processSwapRequest(WanderlustPeer &peer, WanderlustHeader& header);
     void processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header);
@@ -152,8 +154,9 @@ private:
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
     double x,y;
     static const double swapTimeOutTime = 60;
-    static const int dimensions = -20;
+    static const int dimensions = 1;
     static const bool swap = true;
+    static const bool independentSwap = false; // for 2-8 dimensions
 
     map<Pubkey, Location> locationStore;
     uint32_t sentPingCount;

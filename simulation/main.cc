@@ -40,12 +40,12 @@ NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 class MainObject {
 public:
     void run() {
-        runTime = 1000;
-        nodeCount = 20;
+        runTime = 4000;
+        nodeCount = 80;
         areaSize = 285*std::sqrt(nodeCount);
 
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
-        //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_WARN|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));
+        //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_DEBUG|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));
 
         // To generate the topology we first place all nodes on a two dimensional map
         // the chance of an connection between two nodes is then inversely proportional to the distance

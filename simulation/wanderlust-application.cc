@@ -160,17 +160,17 @@ void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& head
     }
 
     // check if we would improve
-    if (shouldSwapWith(header.contents.src_pubkey,
-            header.contents.src_location)) {
-        NS_LOG_DEBUG("Detected potentially advantageous swap, responding");
+    uint8_t swapBits = header.contents.flow_id1;
+    if (shouldSwapWith(header.contents.src_pubkey, header.contents.src_location, swapBits, true)) {
+        NS_LOG_DEBUG("Detected potentially advantageous swap, responding " << (int)swapBits);
         Ptr<Packet> swapResponsePacket = Create<Packet>();
         WanderlustHeader swapResponseHeader;
         swapResponseHeader.contents.src_location = location;
         swapResponseHeader.contents.src_pubkey = pubkey;
         swapResponseHeader.contents.dst_location = header.contents.src_location;
         swapResponseHeader.contents.dst_pubkey = header.contents.src_pubkey;
-        swapResponseHeader.contents.message_type =
-                WANDERLUST_TYPE_SWAP_RESPONSE;
+        swapResponseHeader.contents.message_type = WANDERLUST_TYPE_SWAP_RESPONSE;
+        swapResponseHeader.contents.flow_id1 = swapBits;
         swapResponsePacket->AddHeader(swapResponseHeader);
         peer.socket->SendTo(swapResponsePacket, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
 
@@ -182,6 +182,7 @@ void Wanderlust::processSwapRequest(WanderlustPeer &peer, WanderlustHeader& head
 
 void Wanderlust::processSwapResponse(WanderlustPeer &peer, WanderlustHeader& header) {
     // we've got a response, check if it would be a good idea to swap
+    uint8_t swapBits = header.contents.flow_id1;
     if (header.contents.dst_location != location) {
         NS_LOG_DEBUG("SwapResponse: Our location has changed in the meantime, discarding");
         goto send_refusal;
@@ -190,24 +191,22 @@ void Wanderlust::processSwapResponse(WanderlustPeer &peer, WanderlustHeader& hea
         NS_LOG_DEBUG("Swap already in progress");
         goto send_refusal;
     }
-    if (shouldSwapWith(header.contents.src_pubkey,
-            header.contents.src_location)) {
-        NS_LOG_DEBUG("SWAPPING on response");
+    if (shouldSwapWith(header.contents.src_pubkey, header.contents.src_location, swapBits, false)) {
+        NS_LOG_DEBUG("SWAPPING on response " << (int)swapBits);
         Ptr<Packet> swapResponsePacket = Create<Packet>();
         WanderlustHeader swapResponseHeader;
         swapResponseHeader.contents.src_location = location;
         swapResponseHeader.contents.src_pubkey = pubkey;
         swapResponseHeader.contents.dst_location = header.contents.src_location;
         swapResponseHeader.contents.dst_pubkey = header.contents.src_pubkey;
-        swapResponseHeader.contents.message_type =
-                WANDERLUST_TYPE_SWAP_CONFIRMATION;
+        swapResponseHeader.contents.message_type = WANDERLUST_TYPE_SWAP_CONFIRMATION;
+        swapResponseHeader.contents.flow_id1 = swapBits;
         swapResponsePacket->AddHeader(swapResponseHeader);
-        peer.socket->SendTo(swapResponsePacket, 0,
-                InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
+        peer.socket->SendTo(swapResponsePacket, 0, InetSocketAddress(Ipv4Address::GetBroadcast(), 6556));
         // FIXME: keep sending until we receive a confirmation
 
         // perform the swap
-        location = header.contents.src_location;
+        swapByBits(location, header.contents.src_location, swapBits);
         SendHello();
         swapInProgress = true;
         swapTimeOut = Simulator::Now().GetSeconds() + swapTimeOutTime;
@@ -246,14 +245,14 @@ void Wanderlust::processSwapConfirmation(WanderlustPeer &peer, WanderlustHeader&
         NS_LOG_WARN("Our location has changed in the meantime, discarding");
         return;
     }
-    if (!shouldSwapWith(header.contents.src_pubkey,
-            header.contents.src_location)) {
+    uint8_t swapBits = header.contents.flow_id1;
+    if (!shouldSwapWith(header.contents.src_pubkey, header.contents.src_location, swapBits, false)) {
         // bad luck, we should go ahead anyway
         NS_LOG_DEBUG("Confirmed swap won't lower our location error, still going ahead");
     }
-    NS_LOG_DEBUG("SWAPPING on confirmation");
+    NS_LOG_DEBUG("SWAPPING on confirmation " << (int)swapBits);
     // perform the swap
-    location = header.contents.src_location;
+    swapByBits(location, header.contents.src_location, swapBits);
     SendHello();
 }
 
@@ -397,6 +396,7 @@ void Wanderlust::SendSwapRequest(void) {
             header.contents.src_pubkey = pubkey;
             header.contents.src_location = location;
             header.contents.hop_limit = 1;
+            header.contents.flow_id1 = 0xff;
             p->AddHeader(header);
 
             NS_LOG_INFO ("Sending " << header);
@@ -481,6 +481,15 @@ double Wanderlust::calculateDistance(Location &location1, Location &location2) {
         }
         return std::pow(acc, 0.25);
     }
+    if (dimensions >= 5 && dimensions <= 8) {
+        double acc = 0;
+        for (int i=0;i<dimensions;i++) {
+            double error1 = std::abs(((uint16_t*)location1.data)[i]/(double)0xffff - ((uint16_t*)location2.data)[i]/(double)0xffff);
+            double error2 = std::abs(std::abs(((uint16_t*)location1.data)[i]/(double)0xffff - ((uint16_t*)location2.data)[i]/(double)0xffff) - 1);
+            acc += std::pow(std::min(error1,error2),2);
+        }
+        return std::pow(acc, 0.25);
+    }
     if (dimensions == 64 || dimensions == 128) {
         uint64_t changedBits = ((uint64_t*)location1.data)[0] ^ ((uint64_t*)location2.data)[0];
         size_t count = 0;
@@ -515,20 +524,104 @@ double Wanderlust::calculateLocationError(Location &location) {
     return error;
 }
 
-bool Wanderlust::shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location) {
+bool Wanderlust::shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location, uint8_t &swapBits, bool setSwapBits) {
     if (!swap) return false; // swapping is disabled
 
     double currentError = calculateLocationError(location);
+    if (!independentSwap) {
+        double newError = calculateNewError(peer_pubkey, peer_location, location);
+        NS_LOG_INFO ("old error " << currentError << " new error " << newError);
+        if (setSwapBits) swapBits = 0xff;
+        return newError <= currentError; // swap if the same error, makes sure swapping in long chains works
+    } else {
+        if (setSwapBits) {
+            // now the fun begins
+            // we need to determine which parts to swap in order to get the biggest location improvement
+            // we set the bits in swapBits and return true if it is an improvement
+            uint8_t allowedSwapBits = swapBits;
+            if (allowedSwapBits == 0) allowedSwapBits = 0xff; // everything goes!
+
+            uint8_t bestSwapBits = 0;
+            double bestError = 0;
+            unsigned int max = 1 << dimensions;
+            for (uint8_t s=1;s<max;s++) {
+                uint8_t targetBits = allowedSwapBits & s;
+                if (!targetBits) continue;
+                Location my   = location;
+                Location peer = peer_location;
+                swapByBits(my, peer, targetBits);
+                double newError = calculateNewError(peer_pubkey, my, peer);
+                if (bestSwapBits == 0 || newError < bestError) {
+                    bestSwapBits = targetBits;
+                    bestError = newError;
+                }
+            }
+            if (!bestSwapBits) return false;
+            swapBits = bestSwapBits;
+            return bestError <= currentError;
+        } else {
+            // just check the swap
+            Location my   = location;
+            Location peer = peer_location;
+            swapByBits(my, peer, swapBits);
+            double newError = calculateNewError(peer_pubkey, my, peer);
+            return newError <= currentError;
+        }
+    }
+}
+
+void Wanderlust::swapByBits(Location &a, Location &b, uint8_t swapBits)
+{
+    if (dimensions == 1) {
+        Location tmp = a;
+        a = b;
+        b = tmp;
+        return;
+    }
+    if (dimensions == 2) {
+        for (int i=0;i<2;i++) {
+            if (swapBits&(1<<i)) {
+                // swap part 1
+                ((uint64_t*)a.data)[i] ^= ((uint64_t*)b.data)[i];
+                ((uint64_t*)b.data)[i] ^= ((uint64_t*)a.data)[i];
+                ((uint64_t*)a.data)[i] ^= ((uint64_t*)b.data)[i];
+            }
+        }
+        return;
+    }
+    if (dimensions <= 4) {
+        for (int i=0;i<dimensions;i++) {
+            if (swapBits&(1<<i)) {
+                // swap part 1
+                ((uint32_t*)a.data)[i] ^= ((uint32_t*)b.data)[i];
+                ((uint32_t*)b.data)[i] ^= ((uint32_t*)a.data)[i];
+                ((uint32_t*)a.data)[i] ^= ((uint32_t*)b.data)[i];
+            }
+        }
+        return;
+    }
+    if (dimensions <= 8) {
+        for (int i=0;i<dimensions;i++) {
+            if (swapBits&(1<<i)) {
+                // swap part 1
+                ((uint16_t*)a.data)[i] ^= ((uint16_t*)b.data)[i];
+                ((uint16_t*)b.data)[i] ^= ((uint16_t*)a.data)[i];
+                ((uint16_t*)a.data)[i] ^= ((uint16_t*)b.data)[i];
+            }
+        }
+    }
+}
+
+double Wanderlust::calculateNewError(Pubkey &peer_pubkey, Location &myNewLocation, Location &peerNewLocation) {
     double newError = 0;
     for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
         if (it->first != peer_pubkey) {
-            newError += calculateDistance(peer_location, it->second.location)/peers.size();
+            newError += calculateDistance(myNewLocation, it->second.location)/peers.size();
         } else {
-            newError += calculateDistance(peer_location, location)/peers.size(); // the peer gets our location
+            newError += calculateDistance(myNewLocation, peerNewLocation)/peers.size();
         }
     }
-    NS_LOG_INFO ("old error " << currentError << " new error " << newError);
-    return newError <= currentError; // swap if the same error, makes sure swapping in long chains works
+    return newError;
 }
 
 void Wanderlust::snoopLocation(WanderlustHeader& header) {
