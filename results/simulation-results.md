@@ -85,7 +85,7 @@ Runs:
 
 Conclusions: 2D with independent swapping seems best, followed by 3Di, but 1D is still good (and simple). This needs to be tested at an even bigger scale.
 
-## Experiment 3
+## Experiment 4
 Parameters:
 * 80 nodes
 * 3960s
