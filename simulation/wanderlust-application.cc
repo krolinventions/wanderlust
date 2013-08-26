@@ -447,10 +447,12 @@ void Wanderlust::SendScheduledHello(void) {
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
     double error1a = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
     double error2a = std::abs(std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX) - 1);
-    double error1b = std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
-    double error2b = std::abs(std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX) - 1);
-    return std::pow(std::pow(std::min(error1a,error2a),2)+std::pow(std::min(error1b,error2b),2), 0.25);
-    //return std::sqrt(std::min(error1a,error2a));
+    if (twoD) {
+        double error1b = std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
+        double error2b = std::abs(std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX) - 1);
+        return std::pow(std::pow(std::min(error1a,error2a),2)+std::pow(std::min(error1b,error2b),2), 0.25);
+    }
+    return std::sqrt(std::min(error1a,error2a));
 }
 
 double Wanderlust::calculateLocationError(Location &location) {
@@ -516,16 +518,24 @@ void Wanderlust::route(Ptr<Packet> packet, WanderlustHeader& header) {
     // find the closest peer FIXME: precompute, perhaps using sectors
     WanderlustPeer *best = NULL;
     double bestDistance = 0;
+    bool direct = false;
     for (std::map<Pubkey,WanderlustPeer>::iterator it=peers.begin();it!=peers.end();++it) {
+        if (it->first == header.contents.dst_pubkey) {
+            // it's for this peer!
+            direct = true;
+            best = &it->second;
+            break;
+        }
         double thisDistance = calculateDistance(header.contents.dst_location, it->second.location);
         if (best == NULL || thisDistance < bestDistance) {
             bestDistance = thisDistance;
             best = &it->second;
         }
     }
-    if (bestDistance > calculateDistance(header.contents.dst_location, location)) {
+    if (!direct && bestDistance > calculateDistance(header.contents.dst_location, location)) {
         // it's farther away than us, we should do local routing
         // drop it for now
+        // FIXME: allow routing if this is a peer we have never gotten a packet destined for this address from
         NS_LOG_WARN("Dead end for " << header);
         return;
     }

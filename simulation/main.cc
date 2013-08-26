@@ -40,8 +40,8 @@ NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 class MainObject {
 public:
     void run() {
-        runTime = 3600*10;
-        nodeCount = 50;
+        runTime = 3600*80;
+        nodeCount = 200;
         areaSize = 285*std::sqrt(nodeCount);
 
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
@@ -128,7 +128,7 @@ public:
             pongs += node.getReceivedPongCount();
             node.resetStats();
         }
-        cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << " ping/pong " << pings << "/" << pongs << " " << 100*pongs/pings << "%" << endl;
+        cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << " ping/pong " << pings << "/" << pongs << " " << 100.0*pongs/pings << "%" << endl;
         if (Simulator::Now().GetSeconds() < runTime)
             m_showLocationsEvent = Simulator::Schedule(Seconds (10), &MainObject::showLocations, this);
     }
