@@ -15,8 +15,9 @@ Parameters:
 * ping addresses snooped
 
 Runs:
-* Locations 2D => ~15% reachability
-* Locations 1D => ~16% reachability
+
+    * Locations 2D => ~15% reachability
+    * Locations 1D => ~16% reachability
 
 Conclusion: no significant difference. Maybe when local routing is added this will change.
 
@@ -34,6 +35,7 @@ Parameters:
 * ping addresses snooped
 
 Runs:
+
     * 0D                     => 31% 31%                       *** note: simulation very slow (due to aimless wandering of packets?)
     * 1D o                   => 40% 31% 33% 44% 41% avg 37.8% ***
     * 1D l                   => 68% 69% 88% 37% 45% avg 62.4% ******
@@ -74,6 +76,7 @@ Parameters:
 * ping addresses snooped
 
 Runs:
+
     * 1D   => 47% 42s 27% 49% 50% avg 43.0% ****
     * 2D   => 22s 27s 30% 35% 33% avg 29.4% **
     * 2D i => 39% 55% 50% 55% 33% avg 46.4% ****
@@ -94,6 +97,7 @@ Parameters:
 * ping addresses snooped
 
 Runs:
+
     * 1D   => 18.5% 18.3%
     * 2D i => 24.3% 16.1%
     * 3D i => 23.7% 23.6%
