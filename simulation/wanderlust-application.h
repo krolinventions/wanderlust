@@ -151,7 +151,7 @@ private:
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
     double x,y;
     static const double swapTimeOutTime = 60;
-    static const bool twoD = false;
+    static const int dimensions = 64;
 
     map<Pubkey, Location> locationStore;
     uint32_t sentPingCount;

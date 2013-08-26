@@ -445,14 +445,21 @@ void Wanderlust::SendScheduledHello(void) {
 }
 
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
-    double error1a = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
-    double error2a = std::abs(std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX) - 1);
-    if (twoD) {
-        double error1b = std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
-        double error2b = std::abs(std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX) - 1);
-        return std::pow(std::pow(std::min(error1a,error2a),2)+std::pow(std::min(error1b,error2b),2), 0.25);
+    if (dimensions <= 2) {
+        double error1a = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
+        double error2a = std::abs(std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX) - 1);
+        if (dimensions == 2) {
+            double error1b = std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
+            double error2b = std::abs(std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX) - 1);
+            return std::pow(std::pow(std::min(error1a,error2a),2)+std::pow(std::min(error1b,error2b),2), 0.25);
+        }
+        return std::sqrt(std::min(error1a,error2a));
     }
-    return std::sqrt(std::min(error1a,error2a));
+    if (dimensions == 64) {
+
+    }
+    cerr << "Unsupported number of dimensions " << dimensions;
+    exit(1); // bye!
 }
 
 double Wanderlust::calculateLocationError(Location &location) {
