@@ -201,7 +201,7 @@ Parameters:
 * circular topology
 * reachability averaged over 180s
 * ping addresses snooped (ignore swap response, dst on confirmation)
-* 1D locations (fixed distance calc)
+* 1D locations (fmod distance calc)
 * kind swapping
 
     4   => 99% 100% 99% 99% 100%  avg 99.4% (packet loss just after swap)
@@ -226,7 +226,7 @@ Parameters:
 * circular topology
 * reachability averaged over 180s
 * ping addresses snooped (ignore swap response, dst on confirmation)
-* 1D locations (fixed distance calc)
+* 1D locations (fmod distance calc)
 * kind swapping
 
     3960s            => 23% 99% 20% 24% 23% avg 37.8%
@@ -237,3 +237,76 @@ Parameters:
     loc mut          => 26% 20% 19% 26% 22% avg 22.6%
 
 Conclusion: increasing the time is not a solution
+
+## Experiment 11
+Linear (not circular) locations
+
+Parameters:
+* 10 nodes
+* 1980s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* circular topology
+* reachability averaged over 180s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+* 1D locations (if distance calc)
+* kind swapping
+
+    linear distance => 21% 29% 29% 32% 36% avg 29.4%
+    log distance    => 39% 31% 43% 25% 37% avg 35.0%
+    pow 0.5         => 40% 43% 39% 42% 40% avg 40.8%
+    pow 0.1         => 64% 44% 34% 41% 31% avg 42.8%
+    pow 0.9         => 42% 31% 34% 42% 17% avg 33.2%
+
+## Experiment 12
+Goal: check linear locations for fixed randomly generated topology
+
+Parameters:
+* 40 nodes
+* 1980s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* random topology with srand(4) (everything is connected)
+* reachability averaged over 180s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+* 1D locations (linear)
+* kind swapping
+
+    linear  => 48% 65% 76% 49% 57% avg 59.0%
+    pow 0.1 => 73% 43% 45% 49% 62% avg 54.4%
+    pow 2   => 44% 39% 52% 31% 41% avg 41.1%
+    log     => 42% 52% 40% 50% 45% avg 45.8%
+    
+## Experiment 13
+Goal: check circular locations for fixed randomly generated topology. Distances are now actually circular and make sense.
+
+Parameters:
+* 40 nodes
+* 1980s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* random topology with srand(4) (everything is connected)
+* reachability averaged over 180s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+* 1D locations (circular)
+* kind swapping
+
+    linear     => 55% 43% 49% 58% 50% avg 51.0%
+    pow 0.1    => 63% 45% 42% 52% 59% avg 52.2%
+    pow 0.5    => 55% 68% 47% 52% 69% avg 58.2%
+    pow 2      => 31% 35% 39% 31% 37% avg 34.6%
+    log        => 48% 50% 55% 47% 49% avg 49.8%
+    pow 0.5 2D => 34% 48% 44% 39% 39% avg 40.8%
+    pow 0.5 2Di=> 74% 49% 53% 56% 43% avg 55.0%
+    pow 0.5 4Di=> 63% 48% 66% 40% 50% avg 53.4%
+    pow 0.5 2Dil=> 47% 51% 51% 52% 54% avg 51.0%
+    pow 0.5 2Dl=> 45% 43% 45% 41% 39% avg 42.6%
+
+
+l = 3960 seconds
+
+Conclusion: looking good, linear circular location with ^0.5 is looking best. 1980s seems still enough time for the network to self-organize. If you compare with experiment 3 we have improved from 43% to 58%.
+

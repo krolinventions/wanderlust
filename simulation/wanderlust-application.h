@@ -168,6 +168,13 @@ private:
     map<Pubkey, Location> locationStore;
     uint32_t sentPingCount;
     uint32_t receivedPongCount;
+
+    double dist(double a, double b) {
+        double x = std::abs(a-b-1);
+        double y = std::abs(a-b);
+        double z = std::abs(a-b+1);
+        return std::min(x,std::min(y,z));
+    }
 };
 
 } // namespace ns3

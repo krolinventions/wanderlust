@@ -467,13 +467,17 @@ void Wanderlust::SendScheduledHello(void) {
 
 double Wanderlust::calculateDistance(Location &location1, Location &location2) {
     if (dimensions == 0) return 0;
-    if (dimensions == 1 || dimensions == 2) {
-        double errora = fmod(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX + 1, 1);
-        if (dimensions == 2) {
-            double errorb = fmod(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX + 1, 1);
-            return std::pow(std::pow(errora,2)+std::pow(errorb,2), 0.25);
-        }
-        return std::pow(errora, 0.5);
+    if (dimensions == 1) {
+        double a = ((uint64_t*)location1.data)[0]/(double)UINT64_MAX;
+        double b = ((uint64_t*)location2.data)[0]/(double)UINT64_MAX;
+        double error = dist(a,  b);
+        return std::pow(error, 0.5);
+    }
+    if (dimensions == 2) {
+        double errora = dist(((uint64_t*)location1.data)[0]/(double)UINT64_MAX,((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
+        double errorb = dist(((uint64_t*)location1.data)[1]/(double)UINT64_MAX,((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
+        return std::pow(std::pow(errora,2)+std::pow(errorb,2), 0.25);
+
     }
     if (dimensions == -1) {
         // 1D in only one direction
@@ -494,8 +498,8 @@ double Wanderlust::calculateDistance(Location &location1, Location &location2) {
     if (dimensions >= 3 && dimensions <=4 && distanceShortest) {
         double acc = 0;
         for (int i=0;i<dimensions;i++) {
-            double error1 = std::abs(((uint32_t*)location1.data)[i]/(double)UINT32_MAX - ((uint32_t*)location2.data)[i]/(double)UINT32_MAX);
-            double error2 = std::abs(std::abs(((uint32_t*)location1.data)[i]/(double)UINT32_MAX - ((uint32_t*)location2.data)[i]/(double)UINT32_MAX) - 1);
+            double error1 = dist(((uint32_t*)location1.data)[i]/(double)UINT32_MAX, ((uint32_t*)location2.data)[i]/(double)UINT32_MAX);
+            double error2 = dist(((uint32_t*)location1.data)[i]/(double)UINT32_MAX ,((uint32_t*)location2.data)[i]/(double)UINT32_MAX);
             if (i == 0) acc = std::min(error1,error2);
             acc = std::min(std::min(error1,error2),acc);
         }
@@ -504,7 +508,7 @@ double Wanderlust::calculateDistance(Location &location1, Location &location2) {
     if (dimensions >= 3 && dimensions <=4 ) {
         double acc = 0;
         for (int i=0;i<dimensions;i++) {
-            double error = fmod(((uint32_t*)location1.data)[i]/(double)UINT32_MAX - ((uint32_t*)location2.data)[i]/(double)UINT32_MAX + 1, 1);
+            double error = dist(((uint32_t*)location1.data)[i]/(double)UINT32_MAX,((uint32_t*)location2.data)[i]/(double)UINT32_MAX);
             acc += std::pow(error, 2);
         }
         return std::pow(acc, 0.25);

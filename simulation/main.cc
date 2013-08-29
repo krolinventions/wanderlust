@@ -24,6 +24,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA    02111-1307    USA
  */
+
+#include <cmath>
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -42,10 +44,11 @@ NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 class MainObject {
 public:
     void run() {
-        runTime = 2000;
-        nodeCount = 10;
+        runTime = 4000;
+        nodeCount = 40;
         areaSize = 285*std::sqrt(nodeCount);
         layoutType = RANDOM;
+        printInterval = 180;
 
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
         //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_DEBUG|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));
@@ -71,6 +74,7 @@ public:
         applications = wanderlustServer.Install(nodes);
 
         if (layoutType == RANDOM) {
+            srand(4);
             for (int i=0;i<nodeCount;i++) {
                 // set positions
                 Wanderlust &node = (Wanderlust&)*applications.Get(i);
@@ -115,7 +119,8 @@ public:
         writeDotGraph();
         writeDotGraph2D();
 
-        m_showLocationsEvent = Simulator::Schedule(Seconds (180), &MainObject::showLocations, this);
+        srand(time(NULL));
+        m_showLocationsEvent = Simulator::Schedule(Seconds (printInterval), &MainObject::showLocations, this);
         applications.Start (Seconds (1.0));
         applications.Stop (Seconds (runTime));
 
@@ -152,7 +157,7 @@ public:
         }
         cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << " ping/pong " << pings << "/" << pongs << " " << 100.0*pongs/pings << "%" << endl;
         if (Simulator::Now().GetSeconds() < runTime)
-            m_showLocationsEvent = Simulator::Schedule(Seconds (180), &MainObject::showLocations, this);
+            m_showLocationsEvent = Simulator::Schedule(Seconds (printInterval), &MainObject::showLocations, this);
     }
     void writeDotGraph() {
         cout << "graph {" << endl;
@@ -264,6 +269,7 @@ public:
     int runTime;
     int nodeCount;
     int areaSize;
+    int printInterval;
     enum {
         CIRCULAR, RANDOM
     } layoutType;
