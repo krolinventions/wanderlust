@@ -12,12 +12,13 @@ Parameters:
 * greedy routing
 * direct routing to known neighbor
 * random topology
-* ping addresses snooped
+* ping addresses snooped (dst on response and confirmation)
 
 Runs:
 
     * Locations 2D => ~15% reachability
     * Locations 1D => ~16% reachability
+    * 2Di 15.9%
 
 Conclusion: no significant difference. Maybe when local routing is added this will change.
 
@@ -32,7 +33,7 @@ Parameters:
 * direct routing to known neighbor
 * random topology
 * reachability averaged over 60s
-* ping addresses snooped
+* ping addresses snooped (dst on response and confirmation)
 
 Runs:
 
@@ -73,7 +74,7 @@ Parameters:
 * direct routing to known neighbor
 * random topology
 * reachability averaged over 60s
-* ping addresses snooped
+* ping addresses snooped (dst on response and confirmation)
 
 Runs:
 
@@ -94,7 +95,7 @@ Parameters:
 * direct routing to known neighbor
 * random topology
 * reachability averaged over 60s
-* ping addresses snooped
+* ping addresses snooped (dst on response and confirmation)
 
 Runs:
 
@@ -104,3 +105,80 @@ Runs:
     * 4D i => 25.5% 28.5%
 
 Conclusions: based on the limited number of runs 4Di is looking good.
+
+## Experiment 5
+
+Parameters:
+* 200 nodes
+* 80 hours
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* random topology
+* ping addresses snooped (always source)
+
+* 2Di => 13%? (infinite slowness)
+
+## Experiment 6
+Goal: check if we can get 100% reachability when all nodes are placed in a circle.
+
+Parameters:
+* 20 nodes
+* 960s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* circular topology
+* reachability averaged over 60s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+
+    1D  => 23% 22% 26% 24% 32% avg 25.5% **
+    2Di => 23% 34% 21% 22% 13% avg 22.6% **
+
+Conclusion: the current algorithm will not even work correctly on a circle. This could either be because the time is too short to reach the optimum or it may have reached a lower optima where no swaps exist that are advantageous for both nodes.
+
+## Experiment 7
+Goal: see if taking more time will improve the results. Average time for reachability is also increased to 180s to reduce jitter.
+
+Parameters:
+* 20 nodes
+* 1980s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* circular topology
+* reachability averaged over 180s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+
+    1D  => 17% 23% 18% 28% 26% avg 22.4% **
+
+Conclusion: measurements from the same run show less variability (not shown here) but overall variation is not improved. Giving the algorithm more time does not seem to improve the results, however it can be seen during the run that there are still small changes in the locations. It is therefore deemed prudent to keep the time at the higher value.
+
+## Experiment 8
+Goal: see what we can do to improve reachability on a circle
+
+Parameters:
+* 20 nodes
+* 1980s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* circular topology
+* reachability averaged over 180s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+* 1D locations
+
+    always swap on response => 12% 17% 17% 12% 14% avg 14.4% (worse)
+    mutate locations x       => 21% 17s 16% 31% 27s avg 22.4% (some slowness)
+    mutate locations xn      => 12% 14% 12% 14%  8% avg 12.0% (no slowness)
+    only 3 nodes            => 100% (always)
+    only 4 nodes            => 84% 79% 82% 83% 100% avg 85.6%
+
+n = no send back (fixed routing to prevent loops)
+x = no actual mutation
+
+Conclusion: Slowness may be caused by circular routing due to neighbors having old locations for each other. Extra loop prevention solves the slowness.  Location mutation seems to improve the reachability, but after fixing the routing loops this advantage seems to have disappeared. It is very suspicious that with only 4 nodes reachability is not 100%. There could be high packet loss between the nodes. Enabling some debugging shows nodes think the packet has reached a dead end.
+
+
+
+

@@ -353,7 +353,7 @@ Wanderlust::HandleRead (Ptr<Socket> socket)
         if (header.contents.dst_pubkey != pubkey) {
             packet->RemoveAllByteTags();
             packet->RemoveAllPacketTags();
-            route(packet, header);
+            route(packet, header, &peer);
             return;
         }
         switch (header.contents.message_type) {
@@ -433,11 +433,19 @@ void Wanderlust::SendHello() {
 void Wanderlust::SendScheduledHello(void) {
     NS_LOG_FUNCTION(this);
 
-    if (!swapInProgress) {
+    if (!swapInProgress && mutateLocations) {
         // perturb the location a bit to keep things going and to increase network health
         // what would be reasonable? -> changing entire location in 1 hour
-        //((int32_t*)location.data)[1] += rand()%0x02000000 - 0x01000000;
-        //((int32_t*)location.data)[3] += rand()%0x02000000 - 0x01000000;
+        if (dimensions < 3) {
+            ((int32_t*)location.data)[1] += rand()%0x02000000 - 0x01000000;
+            ((int32_t*)location.data)[3] += rand()%0x02000000 - 0x01000000;
+        }
+        if (dimensions < 5) {
+            ((int32_t*)location.data)[1] += rand()%0x02000000 - 0x01000000;
+            ((int32_t*)location.data)[2] += rand()%0x02000000 - 0x01000000;
+            ((int32_t*)location.data)[3] += rand()%0x02000000 - 0x01000000;
+            ((int32_t*)location.data)[4] += rand()%0x02000000 - 0x01000000;
+        }
     }
 
     SendHello();
@@ -471,6 +479,16 @@ double Wanderlust::calculateDistance(Location &location1, Location &location2) {
         double error1a = std::abs(((uint64_t*)location1.data)[0]/(double)UINT64_MAX - ((uint64_t*)location2.data)[0]/(double)UINT64_MAX);
         double error1b = std::abs(((uint64_t*)location1.data)[1]/(double)UINT64_MAX - ((uint64_t*)location2.data)[1]/(double)UINT64_MAX);
         return std::pow(std::pow(error1a,2)+std::pow(error1b,2), 0.25);
+    }
+    if (dimensions >= 3 && dimensions <=4 && distanceShortest) {
+        double acc = 0;
+        for (int i=0;i<dimensions;i++) {
+            double error1 = std::abs(((uint32_t*)location1.data)[i]/(double)UINT32_MAX - ((uint32_t*)location2.data)[i]/(double)UINT32_MAX);
+            double error2 = std::abs(std::abs(((uint32_t*)location1.data)[i]/(double)UINT32_MAX - ((uint32_t*)location2.data)[i]/(double)UINT32_MAX) - 1);
+            if (i == 0) acc = std::min(error1,error2);
+            acc = std::min(std::min(error1,error2),acc);
+        }
+        return std::pow(acc, 0.5);
     }
     if (dimensions >= 3 && dimensions <=4 ) {
         double acc = 0;
@@ -528,7 +546,7 @@ bool Wanderlust::shouldSwapWith(Pubkey &peer_pubkey, Location &peer_location, ui
     if (!swap) return false; // swapping is disabled
 
     double currentError = calculateLocationError(location);
-    if (!independentSwap) {
+    if (!independentSwap && dimensions == 1) {
         double newError = calculateNewError(peer_pubkey, peer_location, location);
         NS_LOG_INFO ("old error " << currentError << " new error " << newError);
         if (setSwapBits) swapBits = 0xff;
@@ -625,14 +643,18 @@ double Wanderlust::calculateNewError(Pubkey &peer_pubkey, Location &myNewLocatio
 }
 
 void Wanderlust::snoopLocation(WanderlustHeader& header) {
-    if (header.contents.src_pubkey == pubkey) return; // received a message from ourself?
-    // store the source location, except if it's a swap response/confirmation
-    if (header.contents.message_type == WANDERLUST_TYPE_SWAP_RESPONSE ||
-        header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION) {
+    if (header.contents.src_pubkey == pubkey)
+        return; // received a message from ourself?
+    if (header.contents.message_type == WANDERLUST_TYPE_SWAP_CONFIRMATION) {
         locationStore[header.contents.src_pubkey] = header.contents.dst_location;
-    } else {
-        locationStore[header.contents.src_pubkey] = header.contents.src_location;
+        return;
     }
+    if (header.contents.message_type == WANDERLUST_TYPE_SWAP_RESPONSE) {
+        // ignore, we don't know what's going to happen
+        return;
+    }
+
+    locationStore[header.contents.src_pubkey] = header.contents.src_location;
 }
 
 void Wanderlust::SendPing(void) {
@@ -649,7 +671,7 @@ void Wanderlust::SendPing(void) {
         header.contents.dst_pubkey = item->first;
         header.contents.message_type = WANDERLUST_TYPE_PING;
         packet->AddHeader(header);
-        route(packet, header);
+        route(packet, header, NULL);
         NS_LOG_DEBUG("sending ping " << sentPingCount << "/" << receivedPongCount << " " << locationStore.size() << " nodes in locationstore");
         sentPingCount++;
     }
@@ -657,7 +679,7 @@ void Wanderlust::SendPing(void) {
 }
 
 /// Please make sure the header is already attached to the packet
-void Wanderlust::route(Ptr<Packet> packet, WanderlustHeader& header) {
+void Wanderlust::route(Ptr<Packet> packet, WanderlustHeader& header, WanderlustPeer *receivedFrom) {
     if (peers.size() == 0) {
         NS_LOG_WARN("No peers so cannot route");
         return;
@@ -673,17 +695,20 @@ void Wanderlust::route(Ptr<Packet> packet, WanderlustHeader& header) {
             best = &it->second;
             break;
         }
+        if (receivedFrom && it->second == *receivedFrom)
+            continue; // can't send it back until we've got loop protection
         double thisDistance = calculateDistance(header.contents.dst_location, it->second.location);
         if (best == NULL || thisDistance < bestDistance) {
             bestDistance = thisDistance;
             best = &it->second;
         }
     }
-    if (!direct && bestDistance > calculateDistance(header.contents.dst_location, location)) {
+    double myDistance = calculateDistance(header.contents.dst_location, location);
+    if (!direct && bestDistance > myDistance) {
         // it's farther away than us, we should do local routing
         // drop it for now
         // FIXME: allow routing if this is a peer we have never gotten a packet destined for this address from
-        NS_LOG_WARN("Dead end for " << header);
+        cerr << "Dead end for " << header << " my distance " << myDistance << " best distance " << bestDistance << endl;
         return;
     }
     // and off we go!
@@ -701,7 +726,7 @@ void Wanderlust::processPing(WanderlustPeer &peer, WanderlustHeader& header) {
     pongHeader.contents.dst_pubkey = header.contents.src_pubkey;
     pongHeader.contents.message_type = WANDERLUST_TYPE_PONG;
     packet->AddHeader(pongHeader);
-    route(packet, pongHeader);
+    route(packet, pongHeader, &peer);
 }
 
 void Wanderlust::processPong(WanderlustPeer &peer, WanderlustHeader& header) {

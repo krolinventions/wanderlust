@@ -35,14 +35,17 @@
 using namespace ns3;
 using namespace std;
 
+#define PI 3.14159265
+
 NS_LOG_COMPONENT_DEFINE ("WanderlustMain");
 
 class MainObject {
 public:
     void run() {
-        runTime = 4000;
-        nodeCount = 80;
+        runTime = 2000;
+        nodeCount = 4;
         areaSize = 285*std::sqrt(nodeCount);
+        layoutType = CIRCULAR;
 
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
         //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_DEBUG|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));
@@ -67,33 +70,52 @@ public:
         WanderlustHelper wanderlustServer;
         applications = wanderlustServer.Install(nodes);
 
-        for (int i=0;i<nodeCount;i++) {
-            // set positions
-            Wanderlust &node = (Wanderlust&)*applications.Get(i);
-            double x = rand()%areaSize;
-            double y = rand()%areaSize;
-            node.setPosition(x, y); // in m
-        }
-        for (int i=0;i<nodeCount;i++) {
-            Wanderlust &node1 = (Wanderlust&)*applications.Get(i);
-            for (int j=i+1;j<nodeCount;j++) {
-                Wanderlust &node2 = (Wanderlust&)*applications.Get(j);
-                double distanceSquared = node1.calculateDistanceSquared(node2);
-                // 0m -> 100%, 1000m -> 5%
-                double probablility = std::exp(-5E-6*distanceSquared);
-                //NS_LOG_INFO ("Node " << i << " and " << j << " probability " << probablilty);
-                if (rand()/(double)RAND_MAX < probablility) {
-                    connections.push_back(pair<uint32_t,uint32_t>(i,j));
-                    NetDeviceContainer c = pointToPoint.Install (nodes.Get(i), nodes.Get(j));
-                    address.Assign(c);
-                    address.NewNetwork();
+        if (layoutType == RANDOM) {
+            for (int i=0;i<nodeCount;i++) {
+                // set positions
+                Wanderlust &node = (Wanderlust&)*applications.Get(i);
+                double x = rand()%areaSize;
+                double y = rand()%areaSize;
+                node.setPosition(x, y); // in m
+            }
+            for (int i=0;i<nodeCount;i++) {
+                Wanderlust &node1 = (Wanderlust&)*applications.Get(i);
+                for (int j=i+1;j<nodeCount;j++) {
+                    Wanderlust &node2 = (Wanderlust&)*applications.Get(j);
+                    double distanceSquared = node1.calculateDistanceSquared(node2);
+                    // 0m -> 100%, 1000m -> 5%
+                    double probablility = std::exp(-5E-6*distanceSquared);
+                    //NS_LOG_INFO ("Node " << i << " and " << j << " probability " << probablilty);
+                    if (rand()/(double)RAND_MAX < probablility) {
+                        connections.push_back(pair<uint32_t,uint32_t>(i,j));
+                        NetDeviceContainer c = pointToPoint.Install (nodes.Get(i), nodes.Get(j));
+                        address.Assign(c);
+                        address.NewNetwork();
+                    }
                 }
+            }
+        }
+        if (layoutType == CIRCULAR) {
+            // just for visualization
+            for (int i=0;i<nodeCount;i++) {
+                // set positions
+                Wanderlust &node = (Wanderlust&)*applications.Get(i);
+                double x = sin(i/(double)nodeCount*2*PI)*areaSize/2+areaSize/2;
+                double y = cos(i/(double)nodeCount*2*PI)*areaSize/2+areaSize/2;
+                node.setPosition(x, y); // in m
+            }
+            for (int i=0;i<nodeCount;i++) {
+                int j = (i+1)%nodeCount;
+                connections.push_back(pair<uint32_t,uint32_t>(i,j));
+                NetDeviceContainer c = pointToPoint.Install (nodes.Get(i), nodes.Get(j));
+                address.Assign(c);
+                address.NewNetwork();
             }
         }
         writeDotGraph();
         writeDotGraph2D();
 
-        m_showLocationsEvent = Simulator::Schedule(Seconds (60), &MainObject::showLocations, this);
+        m_showLocationsEvent = Simulator::Schedule(Seconds (180), &MainObject::showLocations, this);
         applications.Start (Seconds (1.0));
         applications.Stop (Seconds (runTime));
 
@@ -130,7 +152,7 @@ public:
         }
         cerr << Simulator::Now().GetSeconds() << "s min/avg/max " << min << "/" << avg << "/" << max << " ping/pong " << pings << "/" << pongs << " " << 100.0*pongs/pings << "%" << endl;
         if (Simulator::Now().GetSeconds() < runTime)
-            m_showLocationsEvent = Simulator::Schedule(Seconds (60), &MainObject::showLocations, this);
+            m_showLocationsEvent = Simulator::Schedule(Seconds (180), &MainObject::showLocations, this);
     }
     void writeDotGraph() {
         cout << "graph {" << endl;
@@ -242,6 +264,9 @@ public:
     int runTime;
     int nodeCount;
     int areaSize;
+    enum {
+        CIRCULAR, RANDOM
+    } layoutType;
     ApplicationContainer applications;
     EventId m_showLocationsEvent;
     vector<pair<uint32_t, uint32_t> > connections;

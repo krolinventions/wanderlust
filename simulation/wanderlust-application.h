@@ -77,7 +77,11 @@ public:
     }
     string getLocationText() {
         ostringstream stream;
-        stream << getLocation() << "\\n" << getLocation2();
+        stream << (int) getShortId() << "\\n";
+        if (dimensions == 1)
+            stream << getLocation();
+        else
+            stream << getLocation() << "\\n" << getLocation2();
         return stream.str();
     }
     double getLocationError() {
@@ -135,7 +139,7 @@ private:
 
     void snoopLocation(WanderlustHeader& header);
 
-    void route(Ptr<Packet> packet, WanderlustHeader& header);
+    void route(Ptr<Packet> packet, WanderlustHeader& header, WanderlustPeer *receivedFrom);
 
     std::vector< Ptr<Socket> > sockets;
     Address m_local;
@@ -154,9 +158,11 @@ private:
     std::map<SwapRoutingDestination, SwapRoutingNextHop> swapRoutingTable;
     double x,y;
     static const double swapTimeOutTime = 60;
-    static const int dimensions = 1;
+    static const int dimensions = 4;
     static const bool swap = true;
     static const bool independentSwap = false; // for 2-8 dimensions
+    static const bool mutateLocations = false;
+    static const bool distanceShortest = false;
 
     map<Pubkey, Location> locationStore;
     uint32_t sentPingCount;
