@@ -43,9 +43,9 @@ class MainObject {
 public:
     void run() {
         runTime = 2000;
-        nodeCount = 4;
+        nodeCount = 10;
         areaSize = 285*std::sqrt(nodeCount);
-        layoutType = CIRCULAR;
+        layoutType = RANDOM;
 
         LogComponentEnable ("WanderlustMain", LogLevel(LOG_LEVEL_INFO|LOG_PREFIX_TIME|LOG_PREFIX_LEVEL));
         //LogComponentEnable ("WanderlustApplication", LogLevel(LOG_LEVEL_DEBUG|LOG_PREFIX_TIME|LOG_PREFIX_NODE|LOG_PREFIX_LEVEL|LOG_PREFIX_FUNC));

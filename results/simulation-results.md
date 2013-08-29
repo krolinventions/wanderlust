@@ -169,16 +169,71 @@ Parameters:
 * 1D locations
 
     always swap on response => 12% 17% 17% 12% 14% avg 14.4% (worse)
-    mutate locations x       => 21% 17s 16% 31% 27s avg 22.4% (some slowness)
-    mutate locations xn      => 12% 14% 12% 14%  8% avg 12.0% (no slowness)
+    mutate locations x      => 21% 17s 16% 31% 27s avg 22.4% (some slowness)
+    mutate locations xn     => 12% 14% 12% 14%  8% avg 12.0% (no slowness)
     only 3 nodes            => 100% (always)
     only 4 nodes            => 84% 79% 82% 83% 100% avg 85.6%
+    4 nodes s f             => 99% 100% 99% 99% 100%  avg 99.4% (packet loss just after swap)
+    4 nodes f               => 100% 63% 58% 100% 100% avg 84.2%
+    f                       => 10% 10% (lots and lots of duplicate locations?) 
+    5 s f                   => 100 100 100 100 100 avg 100%
+    6 s f                   => 100 100 100 100 100 avg 100%
+    10 s f                  => 19% 13% 24% 27% 100 avg 36.6
 
 n = no send back (fixed routing to prevent loops)
 x = no actual mutation
+s = also swap when we get worse but it is a net improvement (kind)
+f = fixed distance calc (fmod)
 
 Conclusion: Slowness may be caused by circular routing due to neighbors having old locations for each other. Extra loop prevention solves the slowness.  Location mutation seems to improve the reachability, but after fixing the routing loops this advantage seems to have disappeared. It is very suspicious that with only 4 nodes reachability is not 100%. There could be high packet loss between the nodes. Enabling some debugging shows nodes think the packet has reached a dead end.
 
+Kind swapping (with fixed distance calculation) seems to be the solution.
 
+## Experiment 9
+Goal: see at what circle size routing breaks down
 
+Parameters:
+* nodes varies
+* 1980s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* circular topology
+* reachability averaged over 180s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+* 1D locations (fixed distance calc)
+* kind swapping
 
+    4   => 99% 100% 99% 99% 100%  avg 99.4% (packet loss just after swap)
+    5   => 100 100 100 100 100 avg 100%
+    6   => 100 100 100 100 100 avg 100%
+    7   => 100 100 100 100 100 avg 100%
+    8   => 100 100 100 100 27% avg 85.4%
+    9   => 23% 27% 100 100 100 avg 70.0%
+    10  => 19% 13% 24% 27% 100 avg 36.6%
+
+Conclusion: these settings break down at circles > 7 nodes. When looking at the final map the ones with routing problems completely failed to converge. Maybe swapping packets don't travel far enough.
+
+## Experiment 10
+Goal: see if we can get 10 node circles to route
+
+Parameters:
+* 10 nodes
+* 1980s
+* no location mutation
+* greedy routing
+* direct routing to known neighbor
+* circular topology
+* reachability averaged over 180s
+* ping addresses snooped (ignore swap response, dst on confirmation)
+* 1D locations (fixed distance calc)
+* kind swapping
+
+    3960s            => 23% 99% 20% 24% 23% avg 37.8%
+    swap request 99% => 100 25% 23% 19% 25% avg 38.4%
+    swap request 90% => 26% 25% 23% 23% 21% avg 23.6%
+    2D               => 18% 22% 18% 21% 25% avg 20.8%
+    2Di              => 20% 15% 22% 19% 30%
+    loc mut          => 26% 20% 19% 26% 22% avg 22.6%
+
+Conclusion: increasing the time is not a solution
