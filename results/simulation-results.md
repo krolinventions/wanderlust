@@ -310,3 +310,10 @@ l = 3960 seconds
 
 Conclusion: looking good, linear circular location with ^0.5 is looking best. 1980s seems still enough time for the network to self-organize. If you compare with experiment 3 we have improved from 43% to 58%.
 
+## Night run
+2di 0.5 no location mutation 200 nodes 48 hours -> not sure location snooping is sufficient on this scale
+at 5940 19%, location mutation seems to be bad
+
+* Took two days
+* 17.5%
+

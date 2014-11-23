@@ -725,7 +725,7 @@ void Wanderlust::route(Ptr<Packet> packet, WanderlustHeader& header, WanderlustP
     if (!best)
         return; // so long!
     double myDistance = calculateDistance(header.contents.dst_location, location);
-    if (!direct && bestDistance > myDistance) {
+    if (!direct && bestDistance > myDistance && receivedFrom != NULL) {
         // it's farther away than us, we should do local routing
         // drop it for now
         // FIXME: allow routing if this is a peer we have never gotten a packet destined for this address from

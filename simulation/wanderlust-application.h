@@ -20,8 +20,13 @@
 #ifndef WANSERLUST_APPLICATION_H
 #define WANSERLUST_APPLICATION_H
 
+// I don't remember why these were here, leaving them for compatibility
+#ifndef UINT32_MAX
 #define UINT32_MAX (0xffffffff)
+#endif
+#ifndef UINT64_MAX
 #define UINT64_MAX (18446744073709551615ULL)
+#endif
 
 #include "ns3/application.h"
 #include "ns3/event-id.h"
