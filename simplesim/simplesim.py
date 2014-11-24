@@ -7,8 +7,9 @@ import random
 import math
 
 nodeCount = 500
-areaSize = 285* nodeCount**0.5;
-print "simulated area is", areaSize, "m by", areaSize, "m and contains", nodeCount, "nodes"
+areaSize = 285* nodeCount**0.5
+wander = True # try to get out of dead ends
+not_reachable_messages = True
 
 def shortestDistance(a, b):
     return min([abs(a-b), abs(a-b+1), abs(b-a+1)])
@@ -75,14 +76,9 @@ if 1:
         swapCount = 0
         for node in nodes:
             for other in node.connectedNodes:
-                totalScoreBefore = sum([node.locationScore() for node in nodes])
-                node.swap(other)
-                totalScoreAfter = sum([node.locationScore() for node in nodes])
-                if totalScoreAfter >= totalScoreBefore:
+                if node.shouldSwap(other):
                     node.swap(other)
-                else:
                     swapCount += 1
-                    print swapCount, "swaps", totalScoreAfter, "total score"
         totalScore = sum([node.locationScore() for node in nodes])
         print swapCount, "swaps", totalScore, "total score"
         if swapCount == 0: break
@@ -125,9 +121,6 @@ def bfs(source, destination):
     #print "bfs visited", len(visited), "nodes"
     return result
     
-wander = True # try to get out of dead ends
-not_reachable_messages = True
-
 def locationSearch(current, destination, visited=None):
     #print "location search current status", source.shortestDistance(destination)
     if current == destination: return 0
@@ -180,7 +173,10 @@ for i in xrange(0, to_send):
         locationPaths.append(lpath)
         if path > 0:
             fractions.append(lpath/path)
+print "=============================="
+print "Results:"
 
+print "simulated area is", areaSize, "m by", areaSize, "m and contains", nodeCount, "nodes"
 print "sent", sent, "received", received, "fraction", received/sent
 print "average shortest path", sum(shortestPaths)/len(shortestPaths)
 print "average location path", sum(locationPaths)/len(locationPaths)
