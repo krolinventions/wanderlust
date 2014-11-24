@@ -6,6 +6,8 @@ sp  : shortest path
 lp  : location path
 f   : average lp/sp
 
+Influence of the number of nodes:
+
 nodes   a       dp  c       wander  nrm     sp      lp      f
 10      285     1   0.05    true    true    1.14    1.95    1.1
 20      285     1   0.05    true    true    1.75    2.41    1.31
@@ -22,3 +24,22 @@ network that it would be easy for every node to figure out the shortest route
 to every node, and we would not need Wanderlust. Only if we can get f to stop
 climbing (and keep the same rate of growth as the shortest path) then we have
 something that might work.
+
+We can see that problems get severe at 500 nodes, so that is what we will be using
+for now. Such a run (using pypy) only takes 0.75 seconds, so fiddling with
+parameters (or even running some optimization algorithms over it) will not be problematic.
+
+Varying the distancePower:
+
+nodes   a       dp  c       wander  nrm     sp      lp      f
+500     285     0.1 0.05    true    true    6.67    113.3   17.7
+500     285     0.5 0.05    true    true    5.86    107.23  17.8
+500     285     1   0.05    true    true    6.39    100.33  15.7 (from above)
+500     285     1   0.05    true    true    6.03    110.22  19.6
+500     285     1   0.05    true    true    6.12    97.95   17.65
+500     285     2   0.05    true    true    6.07    97.42   15.3
+500     285     3   0.05    true    true    6.68    111.0   15.9
+500     285     10  0.05    true    true    6.1     93.5    16.8
+
+As we can see the distancePower doesn't really do much. We'll leave it at 1 for now.
+

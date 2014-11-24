@@ -6,7 +6,7 @@ from __future__ import division
 import random
 import math
 
-nodeCount = 2000
+nodeCount = 500
 areaSize = 285 * nodeCount**0.5
 connection_probability_1km = 0.05
 distancePower = 1
@@ -73,6 +73,7 @@ for node in nodes: node.location = random.random()
 
 # Simulate location swapping
 if 1:
+    totalScore = 0
     for i in xrange(0, 1000):
         swapCount = 0
         for node in nodes:
@@ -80,9 +81,11 @@ if 1:
                 if node.shouldSwap(other):
                     node.swap(other)
                     swapCount += 1
+        oldScore = totalScore
         totalScore = sum([node.locationScore() for node in nodes])
         print "Location swap round", i, swapCount, "swaps", totalScore, "total score"
         if swapCount == 0: break
+        if oldScore == totalScore: break
 
 # bfs for the shortest route (in hops)
 def dfs(s, d):
