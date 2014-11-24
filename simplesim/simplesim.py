@@ -6,8 +6,9 @@ from __future__ import division
 import random
 import math
 
-nodeCount = 500
-areaSize = 285* nodeCount**0.5
+nodeCount = 100
+areaSize = 285 * nodeCount**0.5
+connection_probability_1km = 0.05
 wander = True # try to get out of dead ends
 not_reachable_messages = True
 
@@ -62,7 +63,7 @@ for node1 in nodes:
         # 0m -> 100%, 1000m -> 5%
         probablility = math.exp(-5E-6*distanceSquared)
         # NS_LOG_INFO ("Node " << i << " and " << j << " probability " << probablilty);
-        if random.random() < probablility:
+        if random.random() < probablility/5*connection_probability_1km*100:
             node1.connectedNodes.append(node2)
             node2.connectedNodes.append(node1)
             
@@ -72,7 +73,6 @@ for node in nodes: node.location = random.random()
 # Simulate location swapping
 if 1:
     for i in xrange(0, 1000):
-        print("Location swap round", i)
         swapCount = 0
         for node in nodes:
             for other in node.connectedNodes:
@@ -80,7 +80,7 @@ if 1:
                     node.swap(other)
                     swapCount += 1
         totalScore = sum([node.locationScore() for node in nodes])
-        print swapCount, "swaps", totalScore, "total score"
+        print "Location swap round", i, swapCount, "swaps", totalScore, "total score"
         if swapCount == 0: break
 
 # bfs for the shortest route (in hops)
@@ -160,13 +160,12 @@ for i in xrange(0, to_send):
     source = random.choice(nodes)
     destination = random.choice(nodes)
     path = bfs(source, destination)
-    print "connections", len(source.connectedNodes), "path", path
     if path >= no_path: continue
     
     sent += 1
     # see if we can find the route by going to the most alike location
     lpath = locationSearch(source, destination)
-    print "location routing found path of length", lpath
+    print "shortest", path, "location routing", lpath
     if lpath < no_path:
         received += 1
         shortestPaths.append(path)
