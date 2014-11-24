@@ -1,0 +1,24 @@
+a   : length of square = a * nodeCount**0.5
+dp  : distancePower
+c   : connection probability at 1km
+nrm : not reachable messages
+sp  : shortest path
+lp  : location path
+f   : average lp/sp
+
+nodes   a       dp  c       wander  nrm     sp      lp      f
+10      285     1   0.05    true    true    1.14    1.95    1.1
+20      285     1   0.05    true    true    1.75    2.41    1.31
+50      285     1   0.05    true    true    2.25    5.79    2.34
+100     285     1   0.05    true    true    3.26    17.95   5.43
+200     285     1   0.05    true    true    4.38    39.7    8.7
+500     285     1   0.05    true    true    6.39    100.33  15.7
+1000    285     1   0.05    true    true    8.08    233.8   32.6
+2000    285     1   0.05    true    true    11.62   464.7   44.57
+
+We can see that this does not scale. If we assume a factor of 10x slower performance is
+acceptable then this would work for a network up to 200 nodes. This is such a small
+network that it would be easy for every node to figure out the shortest route
+to every node, and we would not need Wanderlust. Only if we can get f to stop
+climbing (and keep the same rate of growth as the shortest path) then we have
+something that might work.

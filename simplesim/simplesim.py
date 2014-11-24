@@ -6,9 +6,10 @@ from __future__ import division
 import random
 import math
 
-nodeCount = 100
+nodeCount = 2000
 areaSize = 285 * nodeCount**0.5
 connection_probability_1km = 0.05
+distancePower = 1
 wander = True # try to get out of dead ends
 not_reachable_messages = True
 
@@ -35,7 +36,7 @@ class Node:
     def locationScore(self):
         score = 0
         for other in self.connectedNodes:
-            score += self.shortestDistance(other)**1
+            score += self.shortestDistance(other)**distancePower
         return score
         
     def swap(self, other):
