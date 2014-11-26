@@ -12,11 +12,13 @@ connection_probability_1km = 0.05
 distancePower = 1
 wander = True # try to get out of dead ends
 not_reachable_messages = True
+resetVisitedOnNotReached = False
+useMaxLength = False
 
 def shortestDistance(a, b):
     return min([abs(a-b), abs(a-b+1), abs(b-a+1)])
 
-class Node:
+class Node(object):
     x = 0
     y = 0
     connectedNodes = None
@@ -86,7 +88,7 @@ if 1:
         print "Location swap round", i, swapCount, "swaps", totalScore, "total score"
         if swapCount == 0: break
         if oldScore == totalScore: break
-
+        
 # bfs for the shortest route (in hops)
 def dfs(s, d):
     visited = set()
@@ -125,33 +127,90 @@ def bfs(source, destination):
     #print "bfs visited", len(visited), "nodes"
     return result
     
-def locationSearch(current, destination, visited=None):
+class PathInfo(object):
+    def __init__(self):
+        self.route = [] # first hop is first
+        self.source = None
+        self.destination = None
+        self.visited = []
+        self.reached = False
+    
+def locationSearch(current, destination, visited=None, pathInfo=None, maxLength=None):
     #print "location search current status", source.shortestDistance(destination)
-    if current == destination: return 0
     if not visited: visited = set()
+    if not pathInfo:
+        pathInfo = PathInfo()
+        pathInfo.source = current
+        pathInfo.destination = destination
     visited.add(current)
+    pathInfo.route.append(current)
+    pathInfo.visited.append(current)
+    if current == destination:
+        pathInfo.reached = True
+        return pathInfo
+    if maxLength and len(pathInfo.route) > maxLength:
+        return pathInfo # maximum length of route reached
     
-    if destination in current.connectedNodes: return 1 # we assume we know the address of our connected nodes
+    # we assume we know the address of our connected nodes
+    if destination in current.connectedNodes:
+        pathInfo.route.append(destination)
+        pathInfo.visited.append(destination)
+        pathInfo.reached = True
+        return pathInfo
     
-    dlist = [(node.shortestDistance(destination), node) for node in current.connectedNodes if node not in visited]
+    dlist = [(node.shortestDistance(destination), node) for node in current.connectedNodes]
     dlist.sort()
-    if not dlist: return no_path
     
-    waste = 0 # the waste of the not rechable messages
     for distance, node in dlist:
+        if node in visited: # check here as it could be visited by the next locationSearch call
+            continue
         if not wander:
-            if distance >= current.shortestDistance(destination): return no_path # dead end!
+            if distance >= current.shortestDistance(destination):
+                # there are no nodes that are closer to the destination and we are not allowed to wander
+                return pathInfo
 
+        visitedBackup = set(visited)
         # send the packet off to the closest node
-        lsearchresult = locationSearch(node, destination, visited)
-        if lsearchresult < no_path:
-            return lsearchresult + 1 + waste
-        if not_reachable_messages == False:
-            return lsearchresult + 1 + waste # we have to accept this result
-        # if we have not reachable messages we can retry with another one
-        # update the waste
-        waste += (lsearchresult-no_path)*2
-    return no_path
+        locationSearch(node, destination, visited, pathInfo, maxLength)
+        
+        if pathInfo.reached:
+            # we've reached our destination
+            return pathInfo
+        if not_reachable_messages:
+            # if we have not reachable messages we can retry with another one
+            # remove the last node from the route (the one that didn't work out)
+            pathInfo.route.pop()
+            if resetVisitedOnNotReached:
+                # also reset the visited nodes as we want to start off with a clean slate from here on
+                visited = visitedBackup
+            continue
+            
+        # sadly we could not reach our destination
+        return pathInfo
+    # we ran out of nodes to send to
+    return pathInfo
+    
+def locationSearchMaxLength(source, destination):
+    # search for paths with increasing maximum lengths
+    maxLength = 15
+    visited = []
+    previousVisited = 0
+    while True:
+        pathInfo = locationSearch(source, destination, maxLength=maxLength)
+        visited.extend(pathInfo.visited)
+        if pathInfo.reached:
+            # fix up the visited noded
+            pathInfo.visited = visited
+            return pathInfo
+        if len(pathInfo.visited) == previousVisited:
+            break # no progress made
+        previousVisited = len(pathInfo.visited)
+        maxLength *= 2
+    # not found...
+    print "giving up at maxLength", maxLength
+    pathInfo = PathInfo()
+    pathInfo.visited = visited
+    return pathInfo
 
 # See if we can route packets
 to_send = 100
@@ -159,7 +218,9 @@ sent = 0
 received = 0
 shortestPaths = []
 locationPaths = []
+locationPathsVisited = []
 fractions = []
+fractionsNoWaste = []
 for i in xrange(0, to_send):
     source = random.choice(nodes)
     destination = random.choice(nodes)
@@ -168,14 +229,19 @@ for i in xrange(0, to_send):
     
     sent += 1
     # see if we can find the route by going to the most alike location
-    lpath = locationSearch(source, destination)
-    print "shortest", path, "location routing", lpath
-    if lpath < no_path:
+    if not useMaxLength: 
+        pathInfo = locationSearch(source,destination)
+    else:
+        pathInfo = locationSearchMaxLength(source, destination)
+    print "shortest", path, "location routing", pathInfo.reached, len(pathInfo.route)-1, "visited", len(pathInfo.visited)-1
+    if pathInfo.reached:
         received += 1
         shortestPaths.append(path)
-        locationPaths.append(lpath)
+        locationPaths.append(len(pathInfo.route)-1)
+        locationPathsVisited.append(len(pathInfo.visited)-1)
         if path > 0:
-            fractions.append(lpath/path)
+            fractions.append((len(pathInfo.route)-1)/path)
+            fractionsNoWaste.append((len(pathInfo.visited)-1)/path)
 print "=============================="
 print "Results:"
 
@@ -183,4 +249,6 @@ print "simulated area is", areaSize, "m by", areaSize, "m and contains", nodeCou
 print "sent", sent, "received", received, "fraction", received/sent
 print "average shortest path", sum(shortestPaths)/len(shortestPaths)
 print "average location path", sum(locationPaths)/len(locationPaths)
+print "average location path", sum(locationPathsVisited)/len(locationPathsVisited), "(visited)"
 print "average fraction", sum(fractions)/len(fractions)
+print "average fraction", sum(fractionsNoWaste)/len(fractionsNoWaste), "(visited)"
