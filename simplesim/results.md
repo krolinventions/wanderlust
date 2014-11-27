@@ -1,3 +1,5 @@
+# SimpleSim Results
+
 a   : length of square = a * nodeCount**0.5
 dp  : distancePower
 c   : connection probability at 1km
@@ -6,7 +8,7 @@ sp  : shortest path
 lp  : location path
 f   : average lp/sp
 
-Influence of the number of nodes:
+## Influence of the number of nodes
 
 nodes   a       dp  c       wander  nrm     sp      lp      f
 10      285     1   0.05    true    true    1.14    1.95    1.1
@@ -29,7 +31,7 @@ We can see that problems get severe at 500 nodes, so that is what we will be usi
 for now. Such a run (using pypy) only takes 0.75 seconds, so fiddling with
 parameters (or even running some optimization algorithms over it) will not be problematic.
 
-Varying the distancePower:
+## Varying the distancePower
 
 nodes   a       dp  c       wander  nrm     sp      lp      f
 500     285     0.1 0.05    true    true    6.67    113.3   17.7
@@ -43,7 +45,7 @@ nodes   a       dp  c       wander  nrm     sp      lp      f
 
 As we can see the distancePower doesn't really do much. We'll leave it at 1 for now.
 
-Improved stats from the simulation:
+## Improved stats from the simulation
 
 simulated area is 6372.79373587 m by 6372.79373587 m and contains 500 nodes
 sent 100 received 100 fraction 1.0
@@ -58,6 +60,8 @@ This is with backtracking when there are no more nodes to try + keeping track of
 It does not work well to reset the visited nodes to the state when a
 node was first reach when it gets a not-reachable message back; messages
 will spend ages wandering through the network.
+
+## Max path length
 
 It was also attempted to have a maximum path length, and retry with
 increasingly bigger path lenghts if a path could not be found. This did

@@ -16,6 +16,8 @@ Subgoals are:
 - A global network of nodes that can communicate without fear of censorship or privacy violations.
 
 ## Status
+After a hiatus of about a year there is again some stuff taking place. I have decided to step away from the NS3 simulation for a bit and first get some quick results using a much simpler simulation written in Python (simplesim). This is proving to be quite succesfull, as runs are much cheaper and features can be implemented much faster.
+
 The algorithm is ready to be reviewed. Protocol design is taking shape. Currently a simulation is being developed. It is still unclear whether Wanderlust could best be implemented as:
 
 - a new routing engine for Cjdns
@@ -25,7 +27,7 @@ The algorithm is ready to be reviewed. Protocol design is taking shape. Currentl
 These are the steps needed to reach the project goal and their status:
 
 1. Routing algorithm design - looking for feedback
-2. Simulation
+2. Simulation - in progress
 3. Protocol design - in progress
 4. Software design
 5. Software implementation
