@@ -18,6 +18,7 @@ limitedVisited = False # only store visited if routing AWAY from our destination
 dimensions = 1 # dimensions of the location used for location swapping
 swapSingleDimension = False
 manhattan = False # should distance calculations for multiple dimensions use manhattan distance?
+greedyLocationAssignment = True
 
 def shortestDistance(a, b):
     result = 0
@@ -81,12 +82,30 @@ for node1 in nodes:
         if random.random() < probablility/5*connection_probability_1km*100:
             node1.connectedNodes.append(node2)
             node2.connectedNodes.append(node1)
-            
-# Assign everyone an initial location
+
 def randomLocation():
     return [random.random() for i in xrange(0, dimensions)]
 
-for node in nodes: node.location = randomLocation()
+if greedyLocationAssignment:
+    # create a list of random locations
+    randoms = [randomLocation() for n in nodes]
+    todo = set(nodes)
+    while todo:
+        # first one
+        n = todo.pop()
+        n.location = randoms.pop() # give it a location from our list
+        frontier = set(n.connectedNodes)
+        for node in frontier:
+            if node.location: continue
+            # find the closest random location
+            s = [(shortestDistance(n.location, x), x) for x in randoms]
+            s.sort()
+            node.location = s[0][1]
+            randoms.remove(node.location)
+            todo.remove(node)
+else:
+    # Assign everyone an initial location
+    for node in nodes: node.location = randomLocation()
 
 # Simulate location swapping
 if 1:

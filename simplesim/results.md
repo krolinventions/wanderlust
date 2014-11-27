@@ -182,3 +182,17 @@ Well, this actually seems to have made it worse...
 ## Improving location swapping
 
 Maybe the location swapping algorithm is not good enough. Let's try with something more advanced.
+
+1 dimension
+```
+f
+14.11
+14.86
+13.13
+16.11
+13.5
+18.4
+```
+
+That did not seem to work as well as hoped. Let's try to assign the initial locations even better.
+
