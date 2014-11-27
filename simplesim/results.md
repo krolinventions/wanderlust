@@ -121,3 +121,64 @@ The average path length goes up, and the number of remembered visited
 nodes does not significantly go down. Doesn't seem to have
 much impact at the current state of the algorithm.
 
+## Multiple dimensions
+
+We swap the entire location at once, and we use manhattan distance.
+```
+dim f
+1   17.22
+1   15.7
+2   14.22
+2   19.8
+3   12.7
+3   14.2
+4   15.55
+5   15.6
+```
+
+This does not seem to make any make any difference. Now let's try this without manhattan distance.
+
+```
+d   f
+1   21.3
+1   17.0
+2   14.02
+2   16.98
+3   15.74
+3   16.7
+4   13.7
+4   13.5
+4   12.7
+4   19.01
+5   15.25
+5   16.7
+```
+
+It does seem that the variability of the f factor is too high to say anything
+for this limited number of runs.
+
+We now try location swapping the individual dimensions (dimensions in the outer loop)
+
+```
+d   f
+4   13.3
+4   15.4
+4   15.7
+```
+
+This does not really seem to make a difference. How about we swap the dimensions in the
+inner loop?
+
+```
+d   f
+4   18.18
+4   18.47
+4   15.9
+4   19.3
+```
+
+Well, this actually seems to have made it worse...
+
+## Improving location swapping
+
+Maybe the location swapping algorithm is not good enough. Let's try with something more advanced.

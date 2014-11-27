@@ -15,18 +15,26 @@ not_reachable_messages = True
 resetVisitedOnNotReached = False
 useMaxLength = False
 limitedVisited = False # only store visited if routing AWAY from our destination
+dimensions = 1 # dimensions of the location used for location swapping
+swapSingleDimension = False
+manhattan = False # should distance calculations for multiple dimensions use manhattan distance?
 
 def shortestDistance(a, b):
-    return min([abs(a-b), abs(a-b+1), abs(b-a+1)])
+    result = 0
+    if manhattan: p = 1
+    else: p = 2
+    for i in xrange(0, len(a)):
+        result += min([abs(a[i]-b[i]), abs(a[i]-b[i]+1), abs(b[i]-a[i]+1)])**p
+    return result**(1/p)
 
 class Node(object):
     x = 0
     y = 0
     connectedNodes = None
-    location = 0
     
     def __init__(self):
         self.connectedNodes = []
+        self.location = None
     
     def distanceSquared(self, other):
         return (self.x-other.x)**2 + (self.y-other.y)**2
@@ -42,14 +50,17 @@ class Node(object):
             score += self.shortestDistance(other)**distancePower
         return score
         
-    def swap(self, other):
-        self.location, other.location = other.location, self.location
+    def swap(self, other, d):
+        if swapSingleDimension:
+            self.location[d], other.location[d] = other.location[d], self.location[d]
+        else:
+            self.location, other.location = other.location, self.location
         
-    def shouldSwap(self, other):
+    def shouldSwap(self, other, d):
         scoreBefore = self.locationScore() + other.locationScore()
-        self.swap(other)
+        self.swap(other, d)
         scoreAfter = self.locationScore() + other.locationScore()
-        self.swap(other)
+        self.swap(other, d)
         return scoreAfter < scoreBefore
 
 # Generate a mesh network
@@ -72,23 +83,27 @@ for node1 in nodes:
             node2.connectedNodes.append(node1)
             
 # Assign everyone an initial location
-for node in nodes: node.location = random.random()
+def randomLocation():
+    return [random.random() for i in xrange(0, dimensions)]
+
+for node in nodes: node.location = randomLocation()
 
 # Simulate location swapping
 if 1:
     totalScore = 0
-    for i in xrange(0, 1000):
-        swapCount = 0
-        for node in nodes:
-            for other in node.connectedNodes:
-                if node.shouldSwap(other):
-                    node.swap(other)
-                    swapCount += 1
-        oldScore = totalScore
-        totalScore = sum([node.locationScore() for node in nodes])
-        print "Location swap round", i, swapCount, "swaps", totalScore, "total score"
-        if swapCount == 0: break
-        if oldScore == totalScore: break
+    for d in xrange(0, dimensions):
+        for i in xrange(0, 1000):
+            swapCount = 0
+            for node in nodes:
+                for other in node.connectedNodes:
+                    if node.shouldSwap(other, d):
+                        node.swap(other, d)
+                        swapCount += 1
+            oldScore = totalScore
+            totalScore = sum([node.locationScore() for node in nodes])
+            print "Location swap round", i, swapCount, "swaps", totalScore, "total score"
+            if swapCount == 0: break
+            if oldScore == totalScore: break
         
 # bfs for the shortest route (in hops)
 def dfs(s, d):
