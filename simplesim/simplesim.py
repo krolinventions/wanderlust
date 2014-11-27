@@ -14,6 +14,7 @@ wander = True # try to get out of dead ends
 not_reachable_messages = True
 resetVisitedOnNotReached = False
 useMaxLength = False
+limitedVisited = False # only store visited if routing AWAY from our destination
 
 def shortestDistance(a, b):
     return min([abs(a-b), abs(a-b+1), abs(b-a+1)])
@@ -134,15 +135,16 @@ class PathInfo(object):
         self.destination = None
         self.visited = []
         self.reached = False
+        self.visitedSet = set()
     
-def locationSearch(current, destination, visited=None, pathInfo=None, maxLength=None):
+def locationSearch(current, destination, pathInfo=None, maxLength=None):
     #print "location search current status", source.shortestDistance(destination)
-    if not visited: visited = set()
     if not pathInfo:
         pathInfo = PathInfo()
         pathInfo.source = current
         pathInfo.destination = destination
-    visited.add(current)
+    if not limitedVisited:
+        pathInfo.visitedSet.add(current)
     pathInfo.route.append(current)
     pathInfo.visited.append(current)
     if current == destination:
@@ -162,16 +164,18 @@ def locationSearch(current, destination, visited=None, pathInfo=None, maxLength=
     dlist.sort()
     
     for distance, node in dlist:
-        if node in visited: # check here as it could be visited by the next locationSearch call
+        if node in pathInfo.visitedSet: # check here as it could be visited by the next locationSearch call
             continue
         if not wander:
             if distance >= current.shortestDistance(destination):
                 # there are no nodes that are closer to the destination and we are not allowed to wander
                 return pathInfo
+        if limitedVisited and distance >= current.shortestDistance(destination):
+            pathInfo.visitedSet.add(current) # we're going to route away!
 
-        visitedBackup = set(visited)
+        visitedBackup = set(pathInfo.visited)
         # send the packet off to the closest node
-        locationSearch(node, destination, visited, pathInfo, maxLength)
+        locationSearch(node, destination, pathInfo, maxLength)
         
         if pathInfo.reached:
             # we've reached our destination
@@ -182,7 +186,7 @@ def locationSearch(current, destination, visited=None, pathInfo=None, maxLength=
             pathInfo.route.pop()
             if resetVisitedOnNotReached:
                 # also reset the visited nodes as we want to start off with a clean slate from here on
-                visited = visitedBackup
+                pathInfo.visited = visitedBackup
             continue
             
         # sadly we could not reach our destination
@@ -219,6 +223,7 @@ received = 0
 shortestPaths = []
 locationPaths = []
 locationPathsVisited = []
+lpVisitedSets = []
 fractions = []
 fractionsNoWaste = []
 for i in xrange(0, to_send):
@@ -239,16 +244,20 @@ for i in xrange(0, to_send):
         shortestPaths.append(path)
         locationPaths.append(len(pathInfo.route)-1)
         locationPathsVisited.append(len(pathInfo.visited)-1)
+        lpVisitedSets.append(len(pathInfo.visitedSet))
         if path > 0:
             fractions.append((len(pathInfo.route)-1)/path)
             fractionsNoWaste.append((len(pathInfo.visited)-1)/path)
 print "=============================="
 print "Results:"
 
+def avg(x): return sum(x)/len(x)
+
 print "simulated area is", areaSize, "m by", areaSize, "m and contains", nodeCount, "nodes"
 print "sent", sent, "received", received, "fraction", received/sent
 print "average shortest path", sum(shortestPaths)/len(shortestPaths)
 print "average location path", sum(locationPaths)/len(locationPaths)
 print "average location path", sum(locationPathsVisited)/len(locationPathsVisited), "(visited)"
+print "average location path", avg(lpVisitedSets), "(rembered visited)"
 print "average fraction", sum(fractions)/len(fractions)
 print "average fraction", sum(fractionsNoWaste)/len(fractionsNoWaste), "(visited)"

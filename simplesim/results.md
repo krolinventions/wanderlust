@@ -90,3 +90,34 @@ As we can see the length of the paths goes down to 30%, however the
 number of nodes visited goes up to 400%! If we note that for
 every visited dead end node two packets are sent (one normal and one
 "not-reachable") then we can see that the overhead is huge.
+
+## Limiting the number of remembered visited nodes
+
+Normal run:
+```
+simulated area is 6372.79373587 m by 6372.79373587 m and contains 500 nodes
+sent 100 received 100 fraction 1.0
+average shortest path 6.15
+average location path 108.38
+average location path 119.27 (visited)
+average location path 119.27 (rembered visited)
+average fraction 18.2292262737
+average fraction 19.9483864469 (visited)
+```
+
+Only remember when routing away from the destination:
+```
+simulated area is 6372.79373587 m by 6372.79373587 m and contains 500 nodes
+sent 100 received 100 fraction 1.0
+average shortest path 6.36
+average location path 137.13
+average location path 146.9 (visited)
+average location path 96.26 (rembered visited)
+average fraction 21.5059603976
+average fraction 23.0472524669 (visited)
+```
+
+The average path length goes up, and the number of remembered visited
+nodes does not significantly go down. Doesn't seem to have
+much impact at the current state of the algorithm.
+
