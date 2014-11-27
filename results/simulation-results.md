@@ -132,8 +132,10 @@ Parameters:
 * reachability averaged over 60s
 * ping addresses snooped (ignore swap response, dst on confirmation)
 
+```
     1D  => 23% 22% 26% 24% 32% avg 25.5% **
     2Di => 23% 34% 21% 22% 13% avg 22.6% **
+```
 
 Conclusion: the current algorithm will not even work correctly on a circle. This could either be because the time is too short to reach the optimum or it may have reached a lower optima where no swaps exist that are advantageous for both nodes.
 
@@ -150,7 +152,9 @@ Parameters:
 * reachability averaged over 180s
 * ping addresses snooped (ignore swap response, dst on confirmation)
 
+```
     1D  => 17% 23% 18% 28% 26% avg 22.4% **
+```
 
 Conclusion: measurements from the same run show less variability (not shown here) but overall variation is not improved. Giving the algorithm more time does not seem to improve the results, however it can be seen during the run that there are still small changes in the locations. It is therefore deemed prudent to keep the time at the higher value.
 
@@ -168,6 +172,7 @@ Parameters:
 * ping addresses snooped (ignore swap response, dst on confirmation)
 * 1D locations
 
+```
     always swap on response => 12% 17% 17% 12% 14% avg 14.4% (worse)
     mutate locations x      => 21% 17s 16% 31% 27s avg 22.4% (some slowness)
     mutate locations xn     => 12% 14% 12% 14%  8% avg 12.0% (no slowness)
@@ -179,11 +184,14 @@ Parameters:
     5 s f                   => 100 100 100 100 100 avg 100%
     6 s f                   => 100 100 100 100 100 avg 100%
     10 s f                  => 19% 13% 24% 27% 100 avg 36.6
+```
 
+```
 n = no send back (fixed routing to prevent loops)
 x = no actual mutation
 s = also swap when we get worse but it is a net improvement (kind)
 f = fixed distance calc (fmod)
+```
 
 Conclusion: Slowness may be caused by circular routing due to neighbors having old locations for each other. Extra loop prevention solves the slowness.  Location mutation seems to improve the reachability, but after fixing the routing loops this advantage seems to have disappeared. It is very suspicious that with only 4 nodes reachability is not 100%. There could be high packet loss between the nodes. Enabling some debugging shows nodes think the packet has reached a dead end.
 
@@ -204,6 +212,7 @@ Parameters:
 * 1D locations (fmod distance calc)
 * kind swapping
 
+```
     4   => 99% 100% 99% 99% 100%  avg 99.4% (packet loss just after swap)
     5   => 100 100 100 100 100 avg 100%
     6   => 100 100 100 100 100 avg 100%
@@ -211,6 +220,7 @@ Parameters:
     8   => 100 100 100 100 27% avg 85.4%
     9   => 23% 27% 100 100 100 avg 70.0%
     10  => 19% 13% 24% 27% 100 avg 36.6%
+```
 
 Conclusion: these settings break down at circles > 7 nodes. When looking at the final map the ones with routing problems completely failed to converge. Maybe swapping packets don't travel far enough.
 
@@ -229,12 +239,14 @@ Parameters:
 * 1D locations (fmod distance calc)
 * kind swapping
 
+```
     3960s            => 23% 99% 20% 24% 23% avg 37.8%
     swap request 99% => 100 25% 23% 19% 25% avg 38.4%
     swap request 90% => 26% 25% 23% 23% 21% avg 23.6%
     2D               => 18% 22% 18% 21% 25% avg 20.8%
     2Di              => 20% 15% 22% 19% 30%
     loc mut          => 26% 20% 19% 26% 22% avg 22.6%
+```
 
 Conclusion: increasing the time is not a solution
 
@@ -253,11 +265,13 @@ Parameters:
 * 1D locations (if distance calc)
 * kind swapping
 
+```
     linear distance => 21% 29% 29% 32% 36% avg 29.4%
     log distance    => 39% 31% 43% 25% 37% avg 35.0%
     pow 0.5         => 40% 43% 39% 42% 40% avg 40.8%
     pow 0.1         => 64% 44% 34% 41% 31% avg 42.8%
     pow 0.9         => 42% 31% 34% 42% 17% avg 33.2%
+```
 
 ## Experiment 12
 Goal: check linear locations for fixed randomly generated topology
@@ -274,10 +288,12 @@ Parameters:
 * 1D locations (linear)
 * kind swapping
 
+```
     linear  => 48% 65% 76% 49% 57% avg 59.0%
     pow 0.1 => 73% 43% 45% 49% 62% avg 54.4%
     pow 2   => 44% 39% 52% 31% 41% avg 41.1%
     log     => 42% 52% 40% 50% 45% avg 45.8%
+```
     
 ## Experiment 13
 Goal: check circular locations for fixed randomly generated topology. Distances are now actually circular and make sense.
@@ -294,6 +310,7 @@ Parameters:
 * 1D locations (circular)
 * kind swapping
 
+```
     linear     => 55% 43% 49% 58% 50% avg 51.0%
     pow 0.1    => 63% 45% 42% 52% 59% avg 52.2%
     pow 0.5    => 55% 68% 47% 52% 69% avg 58.2%
@@ -304,7 +321,7 @@ Parameters:
     pow 0.5 4Di=> 63% 48% 66% 40% 50% avg 53.4%
     pow 0.5 2Dil=> 47% 51% 51% 52% 54% avg 51.0%
     pow 0.5 2Dl=> 45% 43% 45% 41% 39% avg 42.6%
-
+```
 
 l = 3960 seconds
 
