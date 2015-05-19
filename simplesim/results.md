@@ -8,6 +8,7 @@ nrm : not reachable messages
 sp  : shortest path
 lp  : location path
 f   : average lp/sp
+r   : reachability fraction
 ```
 
 ## Influence of the number of nodes
@@ -196,3 +197,63 @@ f
 
 That did not seem to work as well as hoped. Let's try to assign the initial locations even better.
 
+## Location smoothing
+Instead of using the location swapping algorithm to assign the locations we use a global algorithm.
+Two nodes are chosen and the shortest path between them is calculated using bfs. Then all the
+nodes in between get assigned new locations so that when using location routing this will be a favorable
+route. Instead of fully assigning the location to the calculated optimal one it is only adjusted 5%.
+No location swapping is used. Distancepower is 1. Locationsmoothing is run for 10000 iterations.
+
+```
+f
+13.0
+12.11
+11.8
+11.18
+11.58
+````
+
+We can see that this leads to a significant improvement. How about we use more dimensions?
+
+```
+d   f
+2   10.44
+2   9.77
+3   6.49
+3   8.95
+4   8.75
+4   8.41
+5   8.41
+5   6.22
+10  5.1
+10  5.5
+20  5.17
+20  4.28
+40  3.90
+40  2.90
+100 2.66
+100 2.29
+200 2.92
+200 2.17
+```
+
+Adding more dimensions really does work this time. We might want to use a different distance function,
+maybe one that takes all bits into account separately. XOR distance might be a good solution.
+We might even just count the number of different bits.
+It is interesting to repeat the experiment and disable wandering to see if reachability has improved:
+
+```
+d   f       r
+1   1.36    0.43
+2   1.25    0.46
+3   1.16    0.39
+4   1.24    0.53
+5   1.17    0.31
+10  1.21    0.61
+20  1.20    0.62
+40  1.18    0.64
+100 1.22    0.73
+200 1.18    0.81
+```
+
+We can see that with adding more dimensions reachability does go up. 

@@ -10,23 +10,26 @@ nodeCount = 500
 areaSize = 285 * nodeCount**0.5
 connection_probability_1km = 0.05
 distancePower = 1
-wander = True # try to get out of dead ends
+wander = False # try to get out of dead ends
 not_reachable_messages = True
 resetVisitedOnNotReached = False
 useMaxLength = False
 limitedVisited = False # only store visited if routing AWAY from our destination
-dimensions = 1 # dimensions of the location used for location swapping
+dimensions = 200 # dimensions of the location used for location swapping
 swapSingleDimension = False
-manhattan = False # should distance calculations for multiple dimensions use manhattan distance?
-greedyLocationAssignment = True
+distanceCalculationPower = 1
+greedyLocationAssignment = False
+locationSwapping = False
+locationSmoothing = True
+
+def modularDistance(a, b):
+    return min([abs(a-b), abs(a-b+1), abs(b-a+1)])
 
 def shortestDistance(a, b):
     result = 0
-    if manhattan: p = 1
-    else: p = 2
     for i in xrange(0, len(a)):
-        result += min([abs(a[i]-b[i]), abs(a[i]-b[i]+1), abs(b[i]-a[i]+1)])**p
-    return result**(1/p)
+        result += modularDistance(a[i],b[i])**distanceCalculationPower
+    return result**(1/distanceCalculationPower)
 
 class Node(object):
     x = 0
@@ -64,66 +67,9 @@ class Node(object):
         self.swap(other, d)
         return scoreAfter < scoreBefore
 
-# Generate a mesh network
-nodes = []
-for i in xrange(0, nodeCount):
-    node = Node()
-    node.x = random.random()*areaSize
-    node.y = random.random()*areaSize
-    nodes.append(node)
-    
-for node1 in nodes:
-    for node2 in nodes:
-        if node1 == node2: continue
-        distanceSquared = node1.distanceSquared(node2)
-        # 0m -> 100%, 1000m -> 5%
-        probablility = math.exp(-5E-6*distanceSquared)
-        # NS_LOG_INFO ("Node " << i << " and " << j << " probability " << probablilty);
-        if random.random() < probablility/5*connection_probability_1km*100:
-            node1.connectedNodes.append(node2)
-            node2.connectedNodes.append(node1)
-
 def randomLocation():
     return [random.random() for i in xrange(0, dimensions)]
-
-if greedyLocationAssignment:
-    # create a list of random locations
-    randoms = [randomLocation() for n in nodes]
-    todo = set(nodes)
-    while todo:
-        # first one
-        n = todo.pop()
-        n.location = randoms.pop() # give it a location from our list
-        frontier = set(n.connectedNodes)
-        for node in frontier:
-            if node.location: continue
-            # find the closest random location
-            s = [(shortestDistance(n.location, x), x) for x in randoms]
-            s.sort()
-            node.location = s[0][1]
-            randoms.remove(node.location)
-            todo.remove(node)
-else:
-    # Assign everyone an initial location
-    for node in nodes: node.location = randomLocation()
-
-# Simulate location swapping
-if 1:
-    totalScore = 0
-    for d in xrange(0, dimensions):
-        for i in xrange(0, 1000):
-            swapCount = 0
-            for node in nodes:
-                for other in node.connectedNodes:
-                    if node.shouldSwap(other, d):
-                        node.swap(other, d)
-                        swapCount += 1
-            oldScore = totalScore
-            totalScore = sum([node.locationScore() for node in nodes])
-            print "Location swap round", i, swapCount, "swaps", totalScore, "total score"
-            if swapCount == 0: break
-            if oldScore == totalScore: break
-        
+    
 # bfs for the shortest route (in hops)
 def dfs(s, d):
     visited = set()
@@ -170,6 +116,43 @@ class PathInfo(object):
         self.visited = []
         self.reached = False
         self.visitedSet = set()
+        
+def bfsPathInfo(source, destination, pathInfo=None):
+    if not pathInfo:
+        pathInfo = PathInfo()
+        pathInfo.source = source
+        pathInfo.destination = destination    
+    if source == destination:
+        pathInfo.route = [destination]
+        pathInfo.reached = True
+        return pathInfo
+    frontier = set([source])
+    parent = {}
+    def explore(frontier, pathInfo, parent):
+        nextFrontier = set()
+        for node in frontier:
+            if node == destination:
+                return 0
+            if node in pathInfo.visitedSet: continue
+            pathInfo.visitedSet.add(node)
+            nextFrontier.update(node.connectedNodes)
+            for n in node.connectedNodes:
+                if not n in parent: parent[n] = node
+        if nextFrontier:
+            frontier = set(nextFrontier)
+            return explore(frontier, pathInfo, parent)+1
+        return no_path;
+    result = explore(frontier, pathInfo, parent)
+    if result < no_path:
+        pathInfo.reached = True
+        # the parent map now actually contains the route
+        currentNode = destination
+        while True:
+            pathInfo.route = [currentNode]+pathInfo.route
+            if currentNode == source:
+                break
+            currentNode = parent[currentNode]
+    return pathInfo
     
 def locationSearch(current, destination, pathInfo=None, maxLength=None):
     #print "location search current status", source.shortestDistance(destination)
@@ -249,6 +232,104 @@ def locationSearchMaxLength(source, destination):
     pathInfo = PathInfo()
     pathInfo.visited = visited
     return pathInfo
+    
+# Generate a mesh network
+done = False
+while not done:
+    print "Generating mesh network..."
+    nodes = []
+    for i in xrange(0, nodeCount):
+        node = Node()
+        node.x = random.random()*areaSize
+        node.y = random.random()*areaSize
+        nodes.append(node)
+        
+    for node1 in nodes:
+        for node2 in nodes:
+            if node1 == node2: continue
+            distanceSquared = node1.distanceSquared(node2)
+            # 0m -> 100%, 1000m -> 5%
+            probablility = math.exp(-5E-6*distanceSquared)
+            # NS_LOG_INFO ("Node " << i << " and " << j << " probability " << probablilty);
+            if random.random() < probablility/5*connection_probability_1km*100:
+                node1.connectedNodes.append(node2)
+                node2.connectedNodes.append(node1)
+
+    # now check if all nodes are connected
+    print "Checking for isolated nodes..."
+    done = True
+    firstNode = nodes[0]
+    for otherNode in nodes[1:]:
+        if bfsPathInfo(firstNode, otherNode).reached == False:
+            print "Isolated node found, regenerating";
+            done = False
+            break
+
+if greedyLocationAssignment:
+    # create a list of random locations
+    randoms = [randomLocation() for n in nodes]
+    todo = set(nodes)
+    while todo:
+        # first one
+        n = todo.pop()
+        n.location = randoms.pop() # give it a location from our list
+        frontier = set(n.connectedNodes)
+        for node in frontier:
+            if node.location: continue
+            # find the closest random location
+            s = [(shortestDistance(n.location, x), x) for x in randoms]
+            s.sort()
+            node.location = s[0][1]
+            randoms.remove(node.location)
+            todo.remove(node)
+else:
+    # Assign everyone an initial location
+    for node in nodes: node.location = randomLocation()
+    
+# possibility: location smoothing
+# search the shortest path and "massage" the locations so that
+# location routing will have it easier
+# this can be done by assuming a linear change in location between
+# source and destination and then adjusting the locations of the nodes
+# in the shortest path
+if locationSmoothing:
+    print "Location smoothing..."
+    for i in xrange(0, 10000):
+        source = random.choice(nodes)
+        destination = random.choice(nodes)
+        pathInfo = bfsPathInfo(source, destination)
+        # gather all locations, sort them and reassign them
+        locations = [n.location for n in pathInfo.route]
+        sourceLocation = source.location
+        destinationLocation = destination.location
+        if len(pathInfo.route) > 2:
+            for dim in xrange(0, dimensions):
+                goUp = (destinationLocation[dim] > sourceLocation[dim] and destinationLocation[dim] - sourceLocation[dim] < 0.5) or (sourceLocation[dim] > destinationLocation[dim] and sourceLocation[dim] - destinationLocation[dim] >= 0.5)
+                #print source.location, destination.location, "hops", len(pathInfo.route)-1, "goUp", goUp
+                step = modularDistance(sourceLocation[dim], destinationLocation[dim])/(len(pathInfo.route)-1)
+                if not goUp: step = -step
+                c = (sourceLocation[dim] + step) % 1.0
+                for i in xrange(1, len(locations)-1):
+                    #print "assigning location", c, "delta", abs(c-pathInfo.route[i].location[dim])
+                    pathInfo.route[i].location[dim] = pathInfo.route[i].location[dim] * 0.95 + c * 0.05
+                    c = (c + step) % 1.0
+
+# Simulate location swapping
+if locationSwapping:
+    totalScore = 0
+    for d in xrange(0, dimensions):
+        for i in xrange(0, 1000):
+            swapCount = 0
+            for node in nodes:
+                for other in node.connectedNodes:
+                    if node.shouldSwap(other, d):
+                        node.swap(other, d)
+                        swapCount += 1
+            oldScore = totalScore
+            totalScore = sum([node.locationScore() for node in nodes])
+            print "Location swap round", i, swapCount, "swaps", totalScore, "total score"
+            if swapCount == 0: break
+            if oldScore == totalScore: break    
 
 # See if we can route packets
 to_send = 100
