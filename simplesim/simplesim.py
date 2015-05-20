@@ -16,7 +16,7 @@ resetVisitedOnNotReached = False
 useMaxLength = False
 limitedVisited = False # only store visited if routing AWAY from our destination
 dimensions = 200 # dimensions of the location used for location swapping
-swapSingleDimension = False
+swapSingleDimension = True
 distanceCalculationPower = 1
 greedyLocationAssignment = False
 locationSwapping = False
@@ -242,7 +242,7 @@ def locationSearchMaxLength(source, destination):
 def locationSearchDropDimensions(source, destination):
     # search for paths with increasing maximum lengths
     visited = []
-    for i in xrange(0,10):
+    for i in xrange(0,100):
         # drop 10% of the dimensions
         drl = destination.location[:]
         for j in random.sample(xrange(dimensions), int(dimensions*0.5)): drl[j] = None
@@ -320,7 +320,7 @@ else:
 # in the shortest path
 if locationSmoothing:
     print "Location smoothing..."
-    for i in xrange(0, 10000):
+    for i in xrange(0, 100000):
         source = random.choice(nodes)
         destination = random.choice(nodes)
         pathInfo = bfsPathInfo(source, destination)
@@ -342,6 +342,7 @@ if locationSmoothing:
 
 # Simulate location swapping
 if locationSwapping:
+    print "Location swapping..."
     totalScore = 0
     for d in xrange(0, dimensions):
         for i in xrange(0, 1000):

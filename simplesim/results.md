@@ -307,3 +307,65 @@ ret     r       f(visited)
 Increasing the number of retries allows us to reach 100% reachability in most cases.
 The total overhead goes up when the number of retries increases. 10 seems a good value for the
 simulation.
+
+## Swapping again
+
+Now, how does this work with location swapping? Let's try swapping individual dimensions as we want them to
+be as independent as possible. Location swapping 200 dimensions is currently way to slow so we are
+easing our way up.
+
+```
+d   r
+1   0.21
+2   0.27
+3   0.32
+4   0.26
+10  0.48
+20  0.45
+```
+
+Location swapping doesn't seem to improve at >10 dimensions. What happens when we use
+location smoothing?
+
+```
+d   r
+1   0.39
+2   0.51
+4   0.77
+10  0.9
+20  0.93
+40  0.83
+100 0.92
+200 0.93
+200 0.99 (dropretries naar 100)
+200 0.99 (dropretries naar 100)
+```
+
+It still seems that to get to 99% reachability you need > 10 retries.
+
+Location swapping doesn't seem to work well in this case. We might find a practical
+implementation of location smoothing in the future (which can be implemented in a robust
+way with real packets).
+
+## Location smoothing scalability
+
+Tries is 100.
+
+```
+n       r       f(visited)
+500     0.98    9.2
+1000    0.88    20.7
+2000    0.39    55.49
+```
+
+We can see this is still not scalable. Let's increase the number of iterations for location
+smoothing from 10000 to 100000.
+
+```
+n       r       f (visited)
+500     0.99    1.85
+1000    1.0     4.33
+2000    0.96    41
+```
+
+This actually seems to work great. We might need more location swapping rounds for the locations to converge.
