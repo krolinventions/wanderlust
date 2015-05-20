@@ -254,6 +254,56 @@ d   f       r
 40  1.18    0.64
 100 1.22    0.73
 200 1.18    0.81
+400 1.18    0.69
+1000 1.22   0.81
+2000 1.11   0.91
+4000 1.15   0.84
 ```
 
-We can see that with adding more dimensions reachability does go up. 
+We can see that with adding more dimensions reachability does go up.
+
+## Dropping some dimensions when routing
+
+It is possible that not all dimensions are of help when routing to a certain node. We could try sending
+packets with some with some dimensions unspecified. Those should be skipped when routing. The way this was
+implemented is that we try max 10 times with each time <ign> of all dimensions ignored.
+
+```
+ign     r
+0       0.79
+0.1     0.92
+0.1     0.90
+0.1     0.82
+0.5     0.98
+0.5     0.95
+0.5     0.95
+0.9     0.95
+0.9     0.95
+0.9     0.89
+0.99    0.88
+0.99    0.97
+0.99    0.87
+```
+
+We can see that this works extremely well! For now we will drop 50% of our dimensions (currently 200 in total).
+
+What would happen if we increased the retries <ret??
+
+```
+ret     r       f(visited)
+1       0.84    2.55
+2       0.76    3.11
+4       0.95    2.7
+10      0.98    4.9
+20      0.98    5.3
+40      0.98    5.6
+100     1.0     7.7
+200     1.0     3.4
+400     0.99    6.9
+1000    0.99    5.6
+2000    1.0     15.18
+```
+
+Increasing the number of retries allows us to reach 100% reachability in most cases.
+The total overhead goes up when the number of retries increases. 10 seems a good value for the
+simulation.

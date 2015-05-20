@@ -21,8 +21,10 @@ distanceCalculationPower = 1
 greedyLocationAssignment = False
 locationSwapping = False
 locationSmoothing = True
+dropDimensions = True
 
 def modularDistance(a, b):
+    if a == None or b == None: return 0 # one of the dimensions is not used
     return min([abs(a-b), abs(a-b+1), abs(b-a+1)])
 
 def shortestDistance(a, b):
@@ -47,6 +49,9 @@ class Node(object):
         #print self.location, other.location, shortestDistance(self.location, other.location), shortestDistance(other.location, self.location)
         #assert(shortestDistance(self.location, other.location) == shortestDistance(other.location, self.location))
         return shortestDistance(self.location, other.location)
+        
+    def shortestDistanceLocation(self, otherLocation):
+        return shortestDistance(self.location, otherLocation)        
         
     def locationScore(self):
         score = 0
@@ -154,7 +159,7 @@ def bfsPathInfo(source, destination, pathInfo=None):
             currentNode = parent[currentNode]
     return pathInfo
     
-def locationSearch(current, destination, pathInfo=None, maxLength=None):
+def locationSearch(current, destination, pathInfo=None, maxLength=None, destinationRoutingLocation=None):
     #print "location search current status", source.shortestDistance(destination)
     if not pathInfo:
         pathInfo = PathInfo()
@@ -162,6 +167,7 @@ def locationSearch(current, destination, pathInfo=None, maxLength=None):
         pathInfo.destination = destination
     if not limitedVisited:
         pathInfo.visitedSet.add(current)
+    drl = destinationRoutingLocation or destination
     pathInfo.route.append(current)
     pathInfo.visited.append(current)
     if current == destination:
@@ -177,22 +183,22 @@ def locationSearch(current, destination, pathInfo=None, maxLength=None):
         pathInfo.reached = True
         return pathInfo
     
-    dlist = [(node.shortestDistance(destination), node) for node in current.connectedNodes]
+    dlist = [(node.shortestDistanceLocation(drl), node) for node in current.connectedNodes]
     dlist.sort()
     
     for distance, node in dlist:
         if node in pathInfo.visitedSet: # check here as it could be visited by the next locationSearch call
             continue
         if not wander:
-            if distance >= current.shortestDistance(destination):
+            if distance >= current.shortestDistanceLocation(drl):
                 # there are no nodes that are closer to the destination and we are not allowed to wander
                 return pathInfo
-        if limitedVisited and distance >= current.shortestDistance(destination):
+        if limitedVisited and distance >= current.shortestDistanceLocation(drl):
             pathInfo.visitedSet.add(current) # we're going to route away!
 
         visitedBackup = set(pathInfo.visited)
         # send the packet off to the closest node
-        locationSearch(node, destination, pathInfo, maxLength)
+        locationSearch(node, destination, pathInfo, maxLength, drl)
         
         if pathInfo.reached:
             # we've reached our destination
@@ -232,6 +238,26 @@ def locationSearchMaxLength(source, destination):
     pathInfo = PathInfo()
     pathInfo.visited = visited
     return pathInfo
+    
+def locationSearchDropDimensions(source, destination):
+    # search for paths with increasing maximum lengths
+    visited = []
+    for i in xrange(0,10):
+        # drop 10% of the dimensions
+        drl = destination.location[:]
+        for j in random.sample(xrange(dimensions), int(dimensions*0.5)): drl[j] = None
+        pathInfo = locationSearch(source, destination, destinationRoutingLocation=drl)
+        visited.extend(pathInfo.visited)
+        if pathInfo.reached:
+            print "Succeeded after", i+1, "tries"
+            # fix up the visited noded
+            pathInfo.visited = visited
+            return pathInfo
+    # not found...
+    pathInfo = PathInfo()
+    pathInfo.visited = visited
+    print "FAILED"
+    return pathInfo    
     
 # Generate a mesh network
 done = False
@@ -349,10 +375,12 @@ for i in xrange(0, to_send):
     
     sent += 1
     # see if we can find the route by going to the most alike location
-    if not useMaxLength: 
-        pathInfo = locationSearch(source,destination)
-    else:
+    if useMaxLength: 
         pathInfo = locationSearchMaxLength(source, destination)
+    elif dropDimensions:
+        pathInfo = locationSearchDropDimensions(source,destination)
+    else:
+        pathInfo = locationSearch(source,destination)
     print "shortest", path, "location routing", pathInfo.reached, len(pathInfo.route)-1, "visited", len(pathInfo.visited)-1
     if pathInfo.reached:
         received += 1
